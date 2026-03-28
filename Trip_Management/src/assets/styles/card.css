@@ -1,0 +1,64 @@
+.card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+/* Hover Effect */
+.card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Image wrapper */
+.card-image {
+  overflow: hidden;
+}
+
+.card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+/* Image zoom on hover */
+.card:hover img {
+  transform: scale(1.05);
+}
+
+/* Body */
+.card-body {
+  padding: 15px;
+}
+
+/* Title */
+.card h3 {
+  margin: 10px 0;
+  font-size: 18px;
+}
+
+/* Price */
+.card-price {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+/* Button */
+.card button {
+  background: linear-gradient(135deg, #5f5cff, #4a90e2);
+  border: none;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.card button:hover {
+  opacity: 0.9;
+}
