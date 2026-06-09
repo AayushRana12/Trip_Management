@@ -446,11 +446,11 @@ function AdminContent() {
     if (!actionData) return;
     try {
       if (actionData.type === 'cancel_booking') {
-        await fetch(`${API_BASE_URL}/api/bookings/${actionData.id}/cancel`, { method: `PUT" });
+        await fetch(`${API_BASE_URL}/api/bookings/${actionData.id}/cancel`, { method: 'PUT' });
         toast.success("Booking Cancelled");
         fetchData();
       } else if (actionData.type === 'resolve_complaint') {
-        await fetch(`${API_BASE_URL}/api/admin/complaints/${actionData.id}/resolve`, { method: `PUT" });
+        await fetch(`${API_BASE_URL}/api/admin/complaints/${actionData.id}/resolve`, { method: 'PUT' });
         toast.success("Complaint Resolved! ✅");
         fetchData();
       }
