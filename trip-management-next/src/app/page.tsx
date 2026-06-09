@@ -14,7 +14,7 @@ export default function HomePage() {
 
   useEffect(() => {
     // This dynamically uses your live Render URL in production, or localhost if you are testing locally
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "${API_BASE_URL}";
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || `${API_BASE_URL}";
     
     fetch(`${API_URL}/api/packages`)
       .then((res) => res.json())

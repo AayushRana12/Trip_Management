@@ -109,7 +109,7 @@ function DashboardContent() {
   const executeRebook = async () => {
     if (!confirmModal.id) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/api/bookings/${confirmModal.id}/rebook`, { method: "PUT" });
+      const res = await fetch(`${API_BASE_URL}/api/bookings/${confirmModal.id}/rebook`, { method: `PUT" });
       
       if (res.ok) {
         toast.success("Trip Re-booked Successfully! 🎉");
@@ -157,7 +157,7 @@ function DashboardContent() {
   const confirmCancellation = async () => {
     if (!userActionData) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/api/bookings/${userActionData.id}/cancel`, { method: "PUT" });
+      const res = await fetch(`${API_BASE_URL}/api/bookings/${userActionData.id}/cancel`, { method: `PUT" });
       if (res.ok) {
         toast.success("Booking Cancelled ❌");
         setIsCancelModalOpen(false);
@@ -197,7 +197,7 @@ function DashboardContent() {
     if (!message.trim()) return toast.error("Please enter your complaint message.");
 
     try {
-      const res = await fetch("${API_BASE_URL}/api/complaints", {
+      const res = await fetch(`${API_BASE_URL}/api/complaints`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, message })

@@ -192,14 +192,14 @@ function AdminContent() {
     try {
       // ✅ Added the Yearly Revenue fetch call
       const [pkgs, bks, offs, usrs, comps, stts, analyticsData, yearlyRevData] = await Promise.all([
-        fetch("${API_BASE_URL}/api/packages").then(r => r.json()),
-        fetch("${API_BASE_URL}/api/admin/bookings").then(r => r.json()),
-        fetch("${API_BASE_URL}/api/offers").then(r => r.json()),
-        fetch("${API_BASE_URL}/api/admin/users").then(r => r.json()),
-        fetch("${API_BASE_URL}/api/admin/complaints").then(r => r.json()),
-        fetch("${API_BASE_URL}/api/admin/stats").then(r => r.json()),
-        fetch("${API_BASE_URL}/api/admin/advanced-analytics").then(r => r.json()),
-        fetch("${API_BASE_URL}/api/admin/yearly-revenue").then(r => r.json()).catch(() => []) 
+        fetch(`${API_BASE_URL}/api/packages`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/admin/bookings`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/offers`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/admin/users`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/admin/complaints`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/admin/stats`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/admin/advanced-analytics`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/admin/yearly-revenue`).then(r => r.json()).catch(() => []) 
       ]);
 
       setPackages(pkgs);
@@ -288,7 +288,7 @@ function AdminContent() {
   const handleAddPackage = async () => {
     if (!title || !price || !image || departureDates.length === 0) return toast.error("Fill all fields and add at least one date.");
     try {
-      const res = await fetch("${API_BASE_URL}/api/packages", {
+      const res = await fetch(`${API_BASE_URL}/api/packages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -347,7 +347,7 @@ function AdminContent() {
     if (endDate < startDate) return toast.error("End date cannot be earlier than the start date.");
 
     try {
-      const res = await fetch("${API_BASE_URL}/api/offers", {
+      const res = await fetch(`${API_BASE_URL}/api/offers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -446,11 +446,11 @@ function AdminContent() {
     if (!actionData) return;
     try {
       if (actionData.type === 'cancel_booking') {
-        await fetch(`${API_BASE_URL}/api/bookings/${actionData.id}/cancel`, { method: "PUT" });
+        await fetch(`${API_BASE_URL}/api/bookings/${actionData.id}/cancel`, { method: `PUT" });
         toast.success("Booking Cancelled");
         fetchData();
       } else if (actionData.type === 'resolve_complaint') {
-        await fetch(`${API_BASE_URL}/api/admin/complaints/${actionData.id}/resolve`, { method: "PUT" });
+        await fetch(`${API_BASE_URL}/api/admin/complaints/${actionData.id}/resolve`, { method: `PUT" });
         toast.success("Complaint Resolved! ✅");
         fetchData();
       }

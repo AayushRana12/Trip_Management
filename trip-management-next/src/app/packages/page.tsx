@@ -46,7 +46,7 @@ function PackagesContent() {
   useEffect(() => {
     const fetchPackages = async () => {
       try {
-        const res = await fetch("${API_BASE_URL}/api/packages");
+        const res = await fetch(`${API_BASE_URL}/api/packages`);
         const data = await res.json();
 
         if (Array.isArray(data)) {
