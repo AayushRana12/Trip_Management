@@ -1,0 +1,251 @@
+/* ============================================================
+   BASE PAGE & LAYOUT
+   ============================================================ */
+.dashboard, .admin-container {
+  padding: 40px 60px;
+  background: #f8fafc; /* Modern light blue-grey background */
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+}
+
+.admin-title, .dashboard h2 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 30px;
+}
+
+/* ============================================================
+   STATS CARDS
+   ============================================================ */
+.admin-stats {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.stat-card {
+  flex: 1;
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  border: 1px solid #e2e8f0;
+}
+
+.stat-card p {
+  font-size: 32px;
+  font-weight: 800;
+  color: #4f46e5; /* Primary blue */
+  margin-top: 10px;
+}
+
+.revenue {
+  background: #f0fdf4; /* Soft green from screenshot */
+  border: 1px solid #dcfce7;
+}
+
+.revenue p {
+  color: #166534;
+}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+.admin-tabs {
+  margin-bottom: 25px;
+  display: flex;
+  gap: 10px;
+}
+
+.admin-tabs button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  cursor: pointer;
+  font-weight: 600;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.admin-tabs button.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
+/* ============================================================
+   FORMS & INPUTS
+   ============================================================ */
+.admin-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  border: 1px solid #e2e8f0;
+}
+
+.admin-form input, .admin-form select {
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  outline: none;
+  font-size: 14px;
+}
+
+.admin-form input:focus {
+  border-color: #2563eb;
+}
+
+/* ============================================================
+   PROFESSIONAL TABLE (Matches your screenshot!)
+   ============================================================ */
+.chart-box {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e2e8f0;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.admin-table th {
+  background-color: #f8f9fa; 
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 2px solid #f1f5f9;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+.admin-table-row td {
+  padding: 16px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+/* Status Badges */
+.status-confirmed {
+  color: #16a34a;
+  background: #f0fdf4;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.status-cancelled {
+  color: #dc2626;
+  background: #fef2f2;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.payment-text {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+/* Primary Action (Blue) */
+.admin-form button {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-form button:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* Modern Delete/Cancel Button (Red) */
+.admin-delete-btn, .btn-cancel-red {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.admin-delete-btn:hover, .btn-cancel-red:hover {
+  background-color: #dc2626;
+  color: white;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.2);
+}
+
+/* ============================================================
+   PACKAGES GRID
+   ============================================================ */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 25px;
+}
+
+.dashboard-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  transition: transform 0.2s;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.card-content {
+  padding: 20px;
+  text-align: left;
+}
+
+.card-content h3 {
+  margin-bottom: 8px;
+  color: #1e293b;
+}
+
+.card-content p {
+  color: #64748b;
+  font-weight: 600;
+  font-size: 18px;
+  margin-bottom: 15px;
+}

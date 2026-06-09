@@ -1,0 +1,88 @@
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+/* 🔥 HOVER EFFECT */
+.card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* IMAGE */
+.card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 12px;
+  transition: transform 0.4s ease;
+}
+
+.card:hover img {
+  transform: scale(1.05);
+}
+
+/* TEXT */
+.card h3 {
+  margin: 12px 0 5px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.card p {
+  color: #555;
+  margin-bottom: 10px;
+}
+
+/* BUTTON */
+.card button {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #6366f1, #3b82f6);
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.card button:hover {
+  transform: scale(1.05);
+  background: linear-gradient(135deg, #4f46e5, #2563eb);
+}
+
+.card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.card-actions button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* View Details */
+.card-actions button:first-child {
+  background: #e5e7eb;
+  color: #111;
+}
+
+/* Book Now */
+.card-actions button:last-child {
+  background: linear-gradient(135deg, #4f46e5, #3b82f6);
+  color: white;
+}
+
+.card-actions button:hover {
+  opacity: 0.9;
+}

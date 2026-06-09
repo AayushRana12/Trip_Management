@@ -1,0 +1,134 @@
+.booking-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 70vh;
+  background: #f5f7fb;
+}
+
+.booking-card {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  width: 350px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.booking-card h2 {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 14px;
+  margin-bottom: 5px;
+  color: #555;
+}
+
+.form-group input {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  outline: none;
+}
+
+.form-group input:focus {
+  border-color: #4f46e5;
+}
+
+.book-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4f46e5, #3b82f6);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.book-btn:hover {
+  opacity: 0.9;
+}
+
+.total-price {
+  margin-top: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #4f46e5;
+  text-align: center;
+}
+
+/* 🔹 MODAL BACKGROUND */
+.payment-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  z-index: 1000;
+}
+
+/* 🔹 MODAL BOX */
+.payment-box {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  text-align: center;
+  width: 300px;
+
+  animation: popup 0.3s ease;
+}
+
+/* 🔹 ANIMATION */
+@keyframes popup {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* 🔹 BUTTONS */
+.pay-btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 15px;
+  border: none;
+  border-radius: 6px;
+  background: green;
+  color: white;
+  cursor: pointer;
+}
+
+.close-btn {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 6px;
+  background: red;
+  color: white;
+  cursor: pointer;
+}
+
+.pay-btn:hover,
+.close-btn:hover {
+  opacity: 0.9;
+}

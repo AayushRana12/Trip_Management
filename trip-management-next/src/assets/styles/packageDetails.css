@@ -1,0 +1,97 @@
+.details-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
+  background: #f5f7fb;
+  padding: 40px 20px;
+}
+
+/* CARD */
+.details-card {
+  width: 100%;
+  max-width: 600px;
+  background: white;
+  padding: 25px;
+  border-radius: 14px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  transition: 0.3s;
+  position: relative; /* Added for Badge */
+}
+
+.details-card:hover {
+  transform: translateY(-5px);
+}
+
+/* IMAGE */
+.details-card img {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+/* TITLE */
+.details-card h2 {
+  font-size: 26px;
+  margin-bottom: 10px;
+}
+
+/* PRICE (Updated for Discounts) */
+.price-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.current-price {
+  font-size: 24px;
+  font-weight: bold;
+  color: #16a34a; /* Green */
+}
+
+.old-price {
+  text-decoration: line-through;
+  color: #94a3b8;
+  font-size: 18px;
+}
+
+/* DESCRIPTION */
+.desc {
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+/* BUTTONS */
+.details-card button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+/* BACK BUTTON */
+.details-card button:first-child {
+  background: #e5e7eb;
+  color: #111;
+}
+
+/* BOOK BUTTON */
+.details-card button:last-child {
+  background: linear-gradient(135deg, #4f46e5, #3b82f6);
+  color: white;
+  font-weight: 600;
+}
+
+.details-card button:hover {
+  opacity: 0.9;
+}

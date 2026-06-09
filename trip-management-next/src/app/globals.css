@@ -1,0 +1,64 @@
+/* RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* SMOOTH UI (but not on everything ⚠️) */
+html {
+  scroll-behavior: smooth;
+}
+
+/* BODY */
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #f5f7fb;
+  color: #1e293b;
+  line-height: 1.6;
+}
+
+/* CONTAINER */
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 20px;
+}
+
+/* SECTION */
+.section {
+  margin: 60px 0;
+}
+
+/* BUTTON BASE */
+.btn {
+  background: linear-gradient(135deg, #4f46e5, #3b82f6);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+
+/* Custom styling for Chatbot Markdown */
+.markdown-body p {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+.markdown-body ul, .markdown-body ol {
+  margin-top: 0;
+  margin-bottom: 8px;
+  padding-left: 20px;
+}
+.markdown-body strong {
+  color: #0f172a; /* Makes bold text slightly darker for emphasis */
+}

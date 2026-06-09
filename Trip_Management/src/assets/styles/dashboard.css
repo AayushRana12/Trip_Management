@@ -1,0 +1,21 @@
+.dashboard-page {
+  padding: 40px;
+}
+
+.dashboard-page h2 {
+  margin-bottom: 20px;
+}
+
+.card-container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.card {
+  width: 250px;
+  padding: 15px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}

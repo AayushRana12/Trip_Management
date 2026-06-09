@@ -1,0 +1,81 @@
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 10%;
+  background: linear-gradient(135deg, #4f46e5, #3b82f6);
+  color: white;
+}
+
+/* LOGO */
+.logo {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+/* LINKS */
+.nav-links {
+  display: flex;
+  gap: 25px;
+}
+
+.nav-links a {
+  position: relative;
+  text-decoration: none;
+  color: white;
+  font-weight: 500;
+}
+
+/* 🔥 UNDERLINE ANIMATION */
+.nav-links a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -5px;
+  width: 0%;
+  height: 2px;
+  background: white;
+  transition: 0.3s;
+}
+
+.nav-links a:hover::after {
+  width: 100%;
+}
+
+/* ACTIVE LINK */
+.nav-links .active {
+  font-weight: bold;
+}
+
+.nav-links .active::after {
+  width: 100%;
+}
+
+/* AUTH */
+.auth-buttons {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.signup {
+  background: white;
+  color: #3b82f6;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.auth-buttons button {
+  background: white;
+  color: #3b82f6;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* USER */
+.user-email {
+  font-size: 14px;
+}
+

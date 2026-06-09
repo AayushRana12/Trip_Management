@@ -1,0 +1,13 @@
+.destinations-page {
+  padding: 40px;
+}
+
+.destinations-page h2 {
+  margin-bottom: 20px;
+}
+
+.card-container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}

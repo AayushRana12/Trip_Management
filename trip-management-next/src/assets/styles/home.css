@@ -1,0 +1,46 @@
+/* HERO SECTION */
+.hero {
+  height: 85vh;
+  background: linear-gradient(
+      rgba(79, 70, 229, 0.6),
+      rgba(59, 130, 246, 0.6)
+    ),
+    url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e");
+
+  background-size: cover;
+  background-position: center;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  text-align: center;
+  color: white;
+}
+
+/* TEXT */
+.hero h1 {
+  font-size: 48px;
+  margin-bottom: 15px;
+}
+
+.hero p {
+  font-size: 18px;
+  margin-bottom: 25px;
+}
+
+/* BUTTON */
+.hero button {
+  padding: 12px 25px;
+  border: none;
+  border-radius: 8px;
+  background: white;
+  color: #4f46e5;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.hero button:hover {
+  opacity: 0.9;
+}

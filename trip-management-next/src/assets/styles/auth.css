@@ -1,0 +1,256 @@
+/* ============================================================
+   AUTH LAYOUT & CONTAINER
+   ============================================================ */
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 90vh; 
+  background: #f5f7fb;
+  padding: 40px 20px; /* Increased padding for better spacing */
+}
+
+.auth-box {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 520px; /* Slightly wider to accommodate the searchable dropdown nicely */
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+  text-align: center;
+}
+
+.auth-box h2 {
+  margin-bottom: 25px;
+  font-size: 24px;
+  color: #1e293b;
+  font-weight: 700;
+}
+
+/* ============================================================
+   BASE INPUTS & NATIVE SELECTS
+   ============================================================ */
+
+/* Uniform styling for all text inputs and native selects */
+.auth-box input, 
+.auth-box select {
+  width: 100%;
+  padding: 12px 15px;
+  margin-bottom: 15px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+  color: #334155;
+  background-color: #ffffff;
+  display: block;
+}
+
+/* Specific styling for native Select Dropdowns (Backup) */
+.auth-box select {
+  cursor: pointer;
+  appearance: none; 
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 15px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+/* Hover & Focus States */
+.auth-box input:hover,
+.auth-box select:hover {
+  border-color: #94a3b8;
+}
+
+.auth-box input:focus,
+.auth-box select:focus {
+  outline: none;
+  border-color: #2563eb; 
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* ============================================================
+   CUSTOM SEARCHABLE DROPDOWN
+   ============================================================ */
+.custom-dropdown-container {
+  position: relative;
+  width: 100%;
+  margin-bottom: 15px; /* Spacing between grid items */
+}
+
+.dropdown-trigger {
+  padding: 12px 15px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: #334155;
+  transition: all 0.2s;
+  height: 45px; /* Ensures height matches other inputs */
+  box-sizing: border-box;
+}
+
+.dropdown-trigger:hover {
+  border-color: #94a3b8;
+}
+
+.dropdown-trigger.active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.dropdown-trigger.disabled {
+  background-color: #f1f5f9;
+  cursor: not-allowed;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+}
+
+.dropdown-trigger .arrow {
+  font-size: 10px;
+  color: #64748b;
+  transition: transform 0.2s;
+}
+
+.dropdown-trigger.active .arrow {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  margin-top: 5px;
+  z-index: 1000;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-search {
+  width: 100%;
+  padding: 10px 15px !important; /* Forces padding */
+  border: none !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  outline: none !important;
+  font-size: 14px;
+  margin-bottom: 0 !important; /* Removes default input margin */
+}
+
+.dropdown-options {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Custom Scrollbar for Options */
+.dropdown-options::-webkit-scrollbar {
+  width: 6px;
+}
+.dropdown-options::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.option-item {
+  padding: 10px 15px;
+  font-size: 14px;
+  cursor: pointer;
+  color: #475569;
+  text-align: left;
+}
+
+.option-item:hover {
+  background-color: #f8fafc;
+  color: #2563eb;
+}
+
+.option-item.selected {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.no-options {
+  padding: 15px;
+  font-size: 13px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.auth-box button {
+  width: 100%;
+  padding: 13px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.1s;
+}
+
+.auth-box button:hover {
+  background: #1d4ed8;
+}
+
+.auth-box button:active {
+  transform: scale(0.99);
+}
+
+/* ============================================================
+   HELPERS & GRID SYSTEM
+   ============================================================ */
+
+.input-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 6px;
+  margin-left: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+
+.full-width {
+  grid-column: span 2;
+}
+
+.dropdown-group {
+  display: flex;
+  gap: 12px;
+  grid-column: span 2;
+}
+
+.dropdown-group > div {
+  flex: 1;
+}
