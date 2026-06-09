@@ -9,7 +9,13 @@ const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const multer = require('multer'); // ✅ Added multer
 const { generateOTP, sendOTPMail, sendBookingConfirmation, sendCancellationEmail } = require('./utils/mailer');
+const cors = require('cors');
 
+app.use(cors({
+  // Allow both your local environment and your live Vercel site
+  origin: ['http://localhost:3000', 'https://trip-management-tau.vercel.app'],
+  credentials: true // Important if you are using cookies for login sessions
+}));
 const app = express();
 
 app.use(cors());
