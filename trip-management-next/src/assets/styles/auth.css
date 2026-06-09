@@ -1,127 +1,238 @@
-/* ============================================================
-   AUTH LAYOUT & CONTAINER
-   ============================================================ */
+/* =========================================================
+   LOGIN & SIGNUP LAYOUT
+   ========================================================= */
 .auth-container {
+  min-height: calc(100vh - 70px);
   display: flex;
-  justify-content: center;
   align-items: center;
-  min-height: 90vh; 
-  background: #f5f7fb;
-  padding: 40px 20px; /* Increased padding for better spacing */
+  justify-content: center;
+  padding: 20px;
+  /* ✅ Using your new local coastal image! */
+  background-image: linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.8)), url('http://localhost:8000/images/homePage-background.jpg');
+  background-size: cover;
+  background-position: center;
+  font-family: 'Inter', sans-serif;
 }
 
-.auth-box {
-  background: white;
-  padding: 40px;
-  border-radius: 12px;
+/* The Frosted Glass Card */
+.auth-glass-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 50px 40px;
+  border-radius: 24px;
   width: 100%;
-  max-width: 520px; /* Slightly wider to accommodate the searchable dropdown nicely */
-  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-  text-align: center;
+  max-width: 450px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-.auth-box h2 {
-  margin-bottom: 25px;
-  font-size: 24px;
-  color: #1e293b;
+/* Headers */
+.auth-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.auth-title {
+  font-size: 32px;
+  font-weight: 900;
+  color: #0f172a;
+  margin: 0 0 10px 0;
+  letter-spacing: -1px;
+}
+
+.auth-subtitle {
+  color: #64748b;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* Form Elements */
+.auth-form-group {
+  margin-bottom: 20px;
+}
+
+.auth-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.auth-label {
+  display: block;
+  color: #334155;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.auth-link {
+  color: #2563eb;
+  font-size: 13px;
+  text-decoration: none;
   font-weight: 700;
 }
 
-/* ============================================================
-   BASE INPUTS & NATIVE SELECTS
-   ============================================================ */
-
-/* Uniform styling for all text inputs and native selects */
-.auth-box input, 
-.auth-box select {
+.auth-input {
   width: 100%;
-  padding: 12px 15px;
-  margin-bottom: 15px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 14px;
   box-sizing: border-box;
-  transition: all 0.2s ease;
-  color: #334155;
-  background-color: #ffffff;
-  display: block;
-}
-
-/* Specific styling for native Select Dropdowns (Backup) */
-.auth-box select {
-  cursor: pointer;
-  appearance: none; 
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 15px center;
-  background-size: 16px;
-  padding-right: 40px;
-}
-
-/* Hover & Focus States */
-.auth-box input:hover,
-.auth-box select:hover {
-  border-color: #94a3b8;
-}
-
-.auth-box input:focus,
-.auth-box select:focus {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
   outline: none;
-  border-color: #2563eb; 
+  font-size: 15px;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+
+.auth-input:focus {
+  border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-/* ============================================================
-   CUSTOM SEARCHABLE DROPDOWN
-   ============================================================ */
+/* Buttons */
+.auth-btn-primary {
+  width: 100%;
+  margin-top: 10px;
+  padding: 16px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.auth-btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-2px);
+}
+
+.auth-btn-primary:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Divider & Socials */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  margin: 25px 0;
+}
+
+.auth-line {
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.auth-or {
+  padding: 0 15px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.auth-btn-social {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px;
+  background: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  color: #334155;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.auth-btn-social:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.auth-footer-text {
+  text-align: center;
+  margin: 30px 0 0 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.auth-footer-link {
+  color: #2563eb;
+  font-weight: 800;
+  text-decoration: none;
+  margin-left: 5px;
+}
+
+/* =========================================================
+   SIGNUP & DROPDOWN SPECIFICS
+   ========================================================= */
+
+/* The 2-Column Grid for Signup */
+.auth-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  width: 100%;
+}
+
+.auth-full-width {
+  grid-column: span 2;
+}
+
+/* Custom Searchable Dropdown */
 .custom-dropdown-container {
   position: relative;
   width: 100%;
-  margin-bottom: 15px; /* Spacing between grid items */
+  text-align: left;
 }
 
 .dropdown-trigger {
-  padding: 12px 15px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  border-radius: 12px;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: white;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 15px;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
-  color: #334155;
   transition: all 0.2s;
-  height: 45px; /* Ensures height matches other inputs */
-  box-sizing: border-box;
 }
 
-.dropdown-trigger:hover {
+.dropdown-trigger:hover:not(.disabled) {
   border-color: #94a3b8;
 }
 
 .dropdown-trigger.active {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .dropdown-trigger.disabled {
-  background-color: #f1f5f9;
-  cursor: not-allowed;
+  background: #e2e8f0;
   color: #94a3b8;
-  border-color: #e2e8f0;
-}
-
-.dropdown-trigger .arrow {
-  font-size: 10px;
-  color: #64748b;
-  transition: transform 0.2s;
-}
-
-.dropdown-trigger.active .arrow {
-  transform: rotate(180deg);
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .dropdown-menu {
@@ -131,27 +242,23 @@
   right: 0;
   background: white;
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  margin-top: 5px;
-  z-index: 1000;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border-top: none;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  z-index: 100;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   overflow: hidden;
-  animation: fadeIn 0.15s ease-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 
 .dropdown-search {
   width: 100%;
-  padding: 10px 15px !important; /* Forces padding */
-  border: none !important;
-  border-bottom: 1px solid #f1f5f9 !important;
-  outline: none !important;
+  box-sizing: border-box;
+  padding: 12px 16px;
+  border: none;
+  border-bottom: 1px solid #e2e8f0;
+  outline: none;
   font-size: 14px;
-  margin-bottom: 0 !important; /* Removes default input margin */
+  background: #f8fafc;
 }
 
 .dropdown-options {
@@ -159,98 +266,110 @@
   overflow-y: auto;
 }
 
-/* Custom Scrollbar for Options */
-.dropdown-options::-webkit-scrollbar {
-  width: 6px;
-}
-.dropdown-options::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 10px;
-}
-
 .option-item {
-  padding: 10px 15px;
-  font-size: 14px;
+  padding: 12px 16px;
   cursor: pointer;
-  color: #475569;
-  text-align: left;
+  font-size: 14px;
+  color: #334155;
+  transition: background 0.2s;
 }
 
 .option-item:hover {
-  background-color: #f8fafc;
+  background: #eff6ff;
   color: #2563eb;
 }
 
 .option-item.selected {
-  background-color: #eff6ff;
-  color: #1d4ed8;
-  font-weight: 600;
+  background: #2563eb;
+  color: white;
+  font-weight: bold;
 }
 
 .no-options {
-  padding: 15px;
-  font-size: 13px;
+  padding: 12px 16px;
   color: #94a3b8;
+  font-size: 14px;
   text-align: center;
 }
 
-/* ============================================================
-   BUTTONS
-   ============================================================ */
-.auth-box button {
+/* OTP Specifics */
+.auth-otp-input {
   width: 100%;
-  padding: 13px;
-  border: none;
-  border-radius: 8px;
-  background: #2563eb;
-  color: white;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.3s ease, transform 0.1s;
+  box-sizing: border-box;
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px dashed #cbd5e1;
+  background: #f8fafc;
+  outline: none;
+  text-align: center;
+  font-size: 32px;
+  letter-spacing: 12px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 20px;
+  margin-bottom: 25px;
+  transition: all 0.2s;
 }
 
-.auth-box button:hover {
-  background: #1d4ed8;
+.auth-otp-input:focus {
+  border-color: #2563eb;
+  border-style: solid;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
 }
 
-.auth-box button:active {
-  transform: scale(0.99);
-}
+/* =========================================================
+   PREMIUM UI UPGRADES (ICONS & WRAPPERS)
+   ========================================================= */
 
-/* ============================================================
-   HELPERS & GRID SYSTEM
-   ============================================================ */
-
-.input-label {
-  display: block;
-  font-size: 11px;
-  font-weight: 700;
-  color: #64748b;
-  margin-bottom: 6px;
-  margin-left: 2px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  text-align: left;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  margin-bottom: 10px;
-}
-
-.full-width {
-  grid-column: span 2;
-}
-
-.dropdown-group {
+.input-wrapper {
+  position: relative;
   display: flex;
-  gap: 12px;
-  grid-column: span 2;
+  align-items: center;
+  width: 100%;
 }
 
-.dropdown-group > div {
-  flex: 1;
+.input-icon {
+  position: absolute;
+  left: 14px;
+  color: #94a3b8;
+  width: 18px;
+  height: 18px;
+  pointer-events: none; /* Lets clicks pass through to the input */
+  transition: color 0.2s;
+}
+
+/* When the input is focused, make the icon brand blue */
+.input-wrapper:focus-within .input-icon {
+  color: #2563eb;
+}
+
+.auth-input.with-icon {
+  padding-left: 42px; /* Makes room for the icon */
+}
+
+/* Animated Dropdown Chevron */
+.dropdown-chevron {
+  width: 18px;
+  height: 18px;
+  color: #94a3b8;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.dropdown-trigger.active .dropdown-chevron {
+  transform: rotate(180deg);
+  color: #2563eb;
+}
+
+/* Step Badge */
+.step-badge {
+  display: inline-block;
+  background: #eff6ff;
+  color: #2563eb;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 15px;
 }

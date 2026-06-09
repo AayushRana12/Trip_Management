@@ -17,6 +17,7 @@ app.use(express.json());
 
 // 1. Tell Express to serve the uploads folder statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/images', express.static(path.join(__dirname, 'public/images')));
 
 const JWT_SECRET = process.env.JWT_SECRET || "trip_manager_super_secret_key_2026";
 
@@ -58,6 +59,10 @@ const authenticateToken = (req, res, next) => {
 };
 
 const tempOTPs = new Map();
+
+app.get("/api/health", async (req, res) => {
+  res.json({ message: "Trip Manager API is live!" });
+});
 
 // ================= ROOT & DB DIAGNOSTICS =================
 app.get("/", (req, res) => {
@@ -130,8 +135,14 @@ app.post("/api/send-otp", async (req, res) => {
 
 app.post("/api/register", async (req, res) => {
   const { username, email, password, dob, contact_number, city, state, otp } = req.body;
+
+  // ✅ BACKEND VALIDATION: Catch anyone trying to bypass the frontend
+  const phoneRegex = /^[6-9]\d{9}$/;
+  if (!phoneRegex.test(contact_number)) {
+    return res.status(400).json({ error: "Invalid mobile number format." });
+  }
+
   const storedData = tempOTPs.get(email);
-  
   if (!storedData || storedData.otp !== otp) return res.status(400).json({ message: "Invalid or missing OTP" });
   
   try {
@@ -175,6 +186,12 @@ app.post("/api/login", async (req, res) => {
 
     if (userRes.rows.length > 0) {
       validUser = userRes.rows[0];
+      
+      // Prevent deactivated users from logging in
+      if (validUser.is_active === false) {
+        return res.status(403).json({ message: "This account has been deactivated." });
+      }
+      
       validUser.mappedName = validUser.username; 
     } else {
       let adminRes = await pool.query("SELECT * FROM admins WHERE email = $1", [cleanEmail]);
@@ -545,10 +562,12 @@ app.post("/api/payment/verify", async (req, res) => {
       user_id, 
       package_id, 
       travel_date, 
-      people, 
+      people, // Keep for backward compatibility if needed
+      adults,
+      children,
       vehicle_id, 
       meal_preference, 
-      id_proof_url // 👈 Make sure this is being extracted!
+      id_proof_url 
     } = req.body;
 
     const body = razorpay_order_id + '|' + razorpay_payment_id;
@@ -565,6 +584,11 @@ app.post("/api/payment/verify", async (req, res) => {
     try {
       await client.query("BEGIN");
 
+      // Calculate the true total people based on Adults + Children
+      const adultCount = Number(adults) || 1;
+      const childCount = Number(children) || 0;
+      const totalPeople = adultCount + childCount;
+
       // --- THE CAPACITY SECURITY CHECK ---
       const capacityCheck = await client.query(`
         SELECT p.max_capacity, COALESCE(SUM(b.people), 0) as currently_booked
@@ -578,7 +602,7 @@ app.post("/api/payment/verify", async (req, res) => {
         const { max_capacity, currently_booked } = capacityCheck.rows[0];
         const remainingSeats = max_capacity - Number(currently_booked);
 
-        if (Number(people) > remainingSeats) {
+        if (totalPeople > remainingSeats) {
           throw new Error(`Inventory Error: Only ${remainingSeats} seats remaining for this date.`);
         }
       }
@@ -595,7 +619,11 @@ app.post("/api/payment/verify", async (req, res) => {
 
       const price = Number(pkgRes.rows[0].final_price);
       const pkgTitle = pkgRes.rows[0].title;
-      let total = price * Number(people);
+      
+      // ✅ NEW: Children Pricing Logic (90% off for kids)
+      const adultTotal = price * adultCount;
+      const childTotal = (price * 0.9) * childCount;
+      let total = adultTotal + childTotal;
 
       let vehicleCost = 0;
       if (vehicle_id) {
@@ -606,22 +634,22 @@ app.post("/api/payment/verify", async (req, res) => {
         }
       }
 
-      // 👈 Notice we added id_proof_url to the INSERT and VALUES lists
       const query = `
         INSERT INTO bookings (
-          package_id, user_id, travel_date, people, status, 
+          package_id, user_id, travel_date, people, adults, children, status, 
           meal_preference, vehicle_id, id_proof_url, price, vehicle_price, total_price
         ) 
-        VALUES ($1, $2, $3, $4, 'confirmed', $5, $6, $7, $8, $9, $10) 
+        VALUES ($1, $2, $3, $4, $5, $6, 'confirmed', $7, $8, $9, $10, $11, $12) 
         RETURNING *;
       `;
       
-      // 👈 Notice we added id_proof_url to the array of variables
       const bookingResult = await client.query(query, [
         package_id, 
         user_id, 
         travel_date, 
-        people, 
+        totalPeople, // Keep total count for capacity checks
+        adultCount,  // Save adult count
+        childCount,  // Save child count
         meal_preference || 'Any', 
         vehicle_id || null, 
         id_proof_url || null,
@@ -675,12 +703,17 @@ app.post("/api/payment/verify", async (req, res) => {
 
 /* ================= BOOKINGS ================= */
 
-// ✅ Old mock booking route (Includes the ID Proof fixes just in case you use this for internal testing)
+// ✅ Old mock booking route (Updated with new Pricing & Capacity mapping)
 app.post("/api/book", async (req, res) => {
-  const { user_id, package_id, travel_date, people, vehicle_id, meal_preference, id_proof_url } = req.body; 
+  const { user_id, package_id, travel_date, people, adults, children, vehicle_id, meal_preference, id_proof_url } = req.body; 
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+
+    // Calculate the true total people based on Adults + Children
+    const adultCount = Number(adults) || 1;
+    const childCount = Number(children) || 0;
+    const totalPeople = adultCount + childCount;
     
     const pkgRes = await client.query(`
       SELECT p.price, p.title,
@@ -693,7 +726,11 @@ app.post("/api/book", async (req, res) => {
     
     const price = Number(pkgRes.rows[0].final_price);
     const pkgTitle = pkgRes.rows[0].title;
-    let total = price * Number(people);
+    
+    // ✅ NEW: Children Pricing Logic (50% off for kids)
+    const adultTotal = price * adultCount;
+    const childTotal = (price * 0.5) * childCount;
+    let total = adultTotal + childTotal;
 
     let vehicleCost = 0;
     if (vehicle_id) {
@@ -706,10 +743,10 @@ app.post("/api/book", async (req, res) => {
 
     const query = `
       INSERT INTO bookings (
-        package_id, user_id, travel_date, people, status, 
+        package_id, user_id, travel_date, people, adults, children, status, 
         meal_preference, vehicle_id, id_proof_url, price, vehicle_price, total_price
       ) 
-      VALUES ($1, $2, $3, $4, 'confirmed', $5, $6, $7, $8, $9, $10) 
+      VALUES ($1, $2, $3, $4, $5, $6, 'confirmed', $7, $8, $9, $10, $11, $12) 
       RETURNING *;
     `;
     
@@ -717,7 +754,9 @@ app.post("/api/book", async (req, res) => {
       package_id, 
       user_id, 
       travel_date, 
-      people, 
+      totalPeople, // Keep total count for capacity checks
+      adultCount,  // Save adult count
+      childCount,  // Save child count
       meal_preference || 'Any', 
       vehicle_id || null, 
       id_proof_url || null,
@@ -1070,6 +1109,26 @@ app.get("/api/admin/advanced-analytics", async (req, res) => {
   }
 });
 
+/* ================= YEARLY REVENUE ROUTE (Feature #5) ================= */
+app.get("/api/admin/yearly-revenue", async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        TO_CHAR(booking_date, 'YYYY') as year, 
+        COALESCE(SUM(total_price), 0) as revenue 
+      FROM bookings 
+      WHERE status = 'confirmed' 
+      GROUP BY TO_CHAR(booking_date, 'YYYY')
+      ORDER BY TO_CHAR(booking_date, 'YYYY') ASC;
+    `;
+    const result = await pool.query(query);
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Yearly Revenue Error:", err);
+    res.status(500).json({ error: "Failed to fetch yearly revenue" });
+  }
+});
+
 
 /* ================= ADMIN USER ROUTES ================= */
 app.get("/api/admin/users", async (req, res) => {
@@ -1077,6 +1136,7 @@ app.get("/api/admin/users", async (req, res) => {
     const result = await pool.query(`
       SELECT id, username, email, dob, contact_number, city 
       FROM users 
+      WHERE is_active = true
       ORDER BY id DESC
     `);
     res.json(result.rows);
@@ -1086,15 +1146,28 @@ app.get("/api/admin/users", async (req, res) => {
   }
 });
 
+// ✅ UPGRADED: Soft Delete User Route
 app.delete("/api/admin/users/:id", async (req, res) => {
   try {
-    await pool.query("DELETE FROM users WHERE id = $1", [req.params.id]);
-    res.json({ message: "User deleted successfully ✅" });
-  } catch (err) { 
-    console.error("❌ Error deleting user:", err);
-    if (err.code === '23503') {
-      return res.status(400).json({ error: "Cannot delete user. They have active bookings." });
+    const userId = req.params.id;
+
+    // OLD WAY (Destroys data): 
+    // const result = await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    // NEW WAY (Soft Delete - Preserves booking history!):
+    const result = await pool.query(
+      'UPDATE users SET is_active = false WHERE id = $1 RETURNING *', 
+      [userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "User not found" });
     }
+
+    res.json({ message: "User successfully deactivated", user: result.rows[0] });
+
+  } catch (err) { 
+    console.error("❌ Error deactivating user:", err);
     res.status(500).json({ error: "Server error" }); 
   }
 });

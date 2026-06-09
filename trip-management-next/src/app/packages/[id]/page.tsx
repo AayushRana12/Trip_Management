@@ -18,19 +18,12 @@ export default function PackageDetailsPage() {
   const [userRating, setUserRating] = useState(5);
   const [comment, setComment] = useState("");
 
-  // ✅ Hotel Image Gallery State
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
-
-  // ✅ New: Live Availability States
-  const [availability, setAvailability] = useState<{ max_capacity: number, booked_dates: any[] } | null>(null);
-  const [seatsLeft, setSeatsLeft] = useState<number | null>(null);
-  const [selectedDate, setSelectedDate] = useState("");
 
   // --- FETCH DATA ---
   useEffect(() => {
     if (!id) return;
     
-    // The "?t=" forces the browser to get the NEW database data!
     fetch(`http://localhost:8000/api/packages/${id}?t=${new Date().getTime()}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch package details");
@@ -55,31 +48,7 @@ export default function PackageDetailsPage() {
         }
       })
       .catch((err) => console.error("Failed to fetch reviews", err));
-      
-    // ✅ Fetch Package Availability
-    fetch(`http://localhost:8000/api/packages/${id}/availability`)
-      .then(res => res.json())
-      .then(data => setAvailability(data))
-      .catch(err => console.error("Failed to fetch availability", err));
   }, [id]);
-
-  // ✅ Run this whenever the user changes the 'selectedDate' dropdown
-  useEffect(() => {
-    if (selectedDate && availability) {
-      // FIX: Standardize the date string format before comparing!
-      const normalizedDate = selectedDate.split('T')[0]; 
-      
-      const dateRecord = availability.booked_dates.find((d: any) => d.date === normalizedDate);
-      
-      const alreadyBooked = dateRecord ? dateRecord.booked : 0;
-      const remaining = availability.max_capacity - alreadyBooked;
-      
-      setSeatsLeft(remaining);
-    } else {
-      setSeatsLeft(null);
-    }
-  }, [selectedDate, availability]);
-
 
   // --- REVIEW LOGIC ---
   const averageRating = reviews.length > 0 
@@ -109,7 +78,6 @@ export default function PackageDetailsPage() {
   if (loading) return <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", fontSize: "18px", color: "#64748b" }}>Preparing your itinerary...</div>;
   if (!pkg) return <div style={{ textAlign: "center", marginTop: "50px", fontSize: "20px", color: "#64748b" }}>Package not found.</div>;
 
-  // Safely combine the main image and hotel images for the gallery
   const hotelImages = pkg.hotel_images || [];
   const allImages = [pkg.image, ...hotelImages].filter(Boolean);
   const currentPrice = pkg.discounted_price ? Number(pkg.discounted_price) : Number(pkg.price);
@@ -117,13 +85,6 @@ export default function PackageDetailsPage() {
   return (
     <main style={{ background: "#f8fafc", minHeight: "100vh", padding: "60px 20px", fontFamily: "'Inter', sans-serif" }}>
       <Toaster position="top-center" containerStyle={{ zIndex: 99999 }} />
-      <style>{`
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.5; }
-          100% { opacity: 1; }
-        }
-      `}</style>
       
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         
@@ -148,17 +109,14 @@ export default function PackageDetailsPage() {
               border: "1px solid #e2e8f0" 
             }}>
               
-              {/* Main Image Viewport */}
               <div style={{ position: "relative", height: "400px", background: "#f1f5f9" }}>
                 <img 
                   src={allImages[currentImgIndex]} 
                   alt="Package Scenery" 
                   style={{ width: "100%", height: "100%", objectFit: "cover", transition: "opacity 0.4s ease-in-out" }} 
-                  // This ensures if an image fails, it doesn't show a broken icon
                   onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1539103372884-cc235bc2bad6?w=1000&q=80"; }}
                 />
                 
-                {/* Navigation Arrows */}
                 <div style={{ position: "absolute", top: "50%", width: "100%", display: "flex", justifyContent: "space-between", padding: "0 15px", transform: "translateY(-50%)", pointerEvents: "none" }}>
                   <button 
                     onClick={() => setCurrentImgIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1))}
@@ -172,13 +130,11 @@ export default function PackageDetailsPage() {
                   </button>
                 </div>
 
-                {/* Stylish Badge */}
                 <div style={{ position: "absolute", top: "20px", right: "20px", background: "rgba(15, 23, 42, 0.8)", color: "white", padding: "8px 16px", borderRadius: "30px", fontSize: "13px", fontWeight: "600", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", gap: "6px" }}>
                   🏛️ Architecture & Food
                 </div>
               </div>
 
-              {/* Thumbnails (With Failsafe) */}
               <div style={{ display: "flex", gap: "12px", padding: "20px", background: "white", justifyContent: "center" }}>
                 {allImages.map((imgUrl, idx) => (
                   <div 
@@ -201,7 +157,6 @@ export default function PackageDetailsPage() {
                       style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.3s ease" }}
                       onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
                       onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                      // ✅ Failsafe: Replaces broken images instantly
                       onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1539103372884-cc235bc2bad6?w=200&q=80"; }}
                     />
                   </div>
@@ -228,14 +183,8 @@ export default function PackageDetailsPage() {
 
               <h1 style={{ fontSize: "42px", fontWeight: "900", color: "#0f172a", margin: "0 0 40px 0", lineHeight: "1.1", letterSpacing: "-1px" }}>{pkg.title}</h1>
 
-              {/* =========================================================
-                  TRIP DETAILS & ITINERARY (The Premium Upgrade)
-                  ========================================================= */}
               <div style={{ marginTop: "10px" }}>
-                
-                {/* 🌟 Premium Highlights Grid */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "50px" }}>
-                  
                   <div style={{ display: "flex", alignItems: "center", gap: "16px", padding: "20px", background: "#f8fafc", borderRadius: "20px", border: "1px solid #f1f5f9", transition: "transform 0.2s", cursor: "default" }} onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-2px)"} onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}>
                     <div style={{ fontSize: "28px", background: "white", width: "55px", height: "55px", borderRadius: "16px", display: "flex", justifyContent: "center", alignItems: "center", boxShadow: "0 4px 10px rgba(0,0,0,0.03)" }}>🏨</div>
                     <div>
@@ -267,10 +216,8 @@ export default function PackageDetailsPage() {
                       <p style={{ margin: 0, color: "#64748b", fontSize: "14px", fontWeight: "500" }}>Pickup & Drop Facility</p>
                     </div>
                   </div>
-
                 </div>
 
-                {/* 📖 About Section */}
                 <div style={{ marginBottom: "50px" }}>
                   <h3 style={{ fontSize: "24px", color: "#0f172a", fontWeight: "900", marginBottom: "16px" }}>About this journey</h3>
                   <p style={{ fontSize: "16px", color: "#475569", lineHeight: "1.8", margin: 0 }}>
@@ -278,12 +225,10 @@ export default function PackageDetailsPage() {
                   </p>
                 </div>
 
-                {/* 📍 The Vertical Timeline Itinerary */}
                 <div>
                   <h3 style={{ fontSize: "24px", color: "#0f172a", fontWeight: "900", marginBottom: "30px" }}>Your Itinerary</h3>
                   
                   <div style={{ paddingLeft: "20px", borderLeft: "3px dashed #cbd5e1", marginLeft: "10px" }}>
-                    
                     {pkg.itinerary && pkg.itinerary.length > 0 ? (
                       pkg.itinerary.map((plan: string, index: number) => {
                         const isFirst = index === 0;
@@ -311,7 +256,6 @@ export default function PackageDetailsPage() {
                     ) : (
                       <p style={{ color: "#64748b" }}>No itinerary details available for this package.</p>
                     )}
-                    
                   </div>
                 </div>
 
@@ -354,24 +298,21 @@ export default function PackageDetailsPage() {
           </div>
 
           {/* =========================================================
-              RIGHT SIDE: STICKY BOOKING CARD (TARGET DESIGN)
+              RIGHT SIDE: STICKY BOOKING CARD 
               ========================================================= */}
           <div style={{ position: "sticky", top: "100px", alignSelf: "start" }}> 
             
             <div style={{ background: "white", padding: "32px", borderRadius: "24px", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #e2e8f0" }}>
               
-              {/* Header */}
               <p style={{ margin: "0 0 8px 0", color: "#64748b", fontSize: "13px", fontWeight: "800", textTransform: "uppercase", letterSpacing: "1.5px" }}>
                 STARTING FROM
               </p>
               
-              {/* Price */}
               <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginBottom: "32px" }}>
                 <span style={{ fontSize: "46px", fontWeight: "900", color: "#0f172a", letterSpacing: "-1px" }}>₹{currentPrice.toLocaleString()}</span>
                 <span style={{ color: "#64748b", fontWeight: "500", fontSize: "18px" }}>/ person</span>
               </div>
 
-              {/* Info Box */}
               <div style={{ background: "#f8fafc", padding: "24px", borderRadius: "16px", marginBottom: "32px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                   <span style={{ color: "#475569", fontWeight: "700", fontSize: "16px" }}>Duration</span>
@@ -383,73 +324,17 @@ export default function PackageDetailsPage() {
                 </div>
               </div>
 
-              {/* ✅ LIVE SEAT AVAILABILITY SELECTOR */}
-              {pkg.departure_dates && pkg.departure_dates.length > 0 && (
-                <div style={{ marginBottom: "24px" }}>
-                  <label style={{ display: "block", marginBottom: "8px", fontWeight: "700", color: "#475569", fontSize: "14px" }}>Select Departure Date</label>
-                  <select 
-                    value={selectedDate} 
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    style={{ width: "100%", padding: "14px", borderRadius: "12px", border: "1px solid #cbd5e1", outline: "none", fontSize: "16px", background: "white", color: "#0f172a", cursor: "pointer", fontFamily: "inherit" }}
-                  >
-                    <option value="" disabled>Choose a date...</option>
-                    {pkg.departure_dates.map((date: string) => (
-                      <option key={date} value={date}>
-                        {new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* SEAT AVAILABILITY BADGE */}
-                  {selectedDate && seatsLeft !== null && (
-                    <div style={{ 
-                      marginTop: "12px", padding: "12px 16px", borderRadius: "12px", 
-                      backgroundColor: seatsLeft <= 5 ? "#fef2f2" : seatsLeft <= 15 ? "#fffbeb" : "#f0fdf4",
-                      border: `1px solid ${seatsLeft <= 5 ? "#fca5a5" : seatsLeft <= 15 ? "#fcd34d" : "#bbf7d0"}`,
-                      display: "flex", alignItems: "center", gap: "8px"
-                    }}>
-                      {seatsLeft <= 0 ? (
-                        <span style={{ margin: 0, color: "#ef4444", fontWeight: "bold", fontSize: "15px" }}>❌ Sold Out for this date!</span>
-                      ) : seatsLeft <= 5 ? (
-                        <span style={{ margin: 0, color: "#dc2626", fontWeight: "bold", fontSize: "15px", animation: "pulse 2s infinite" }}>
-                          🔥 Hurry! Only {seatsLeft} seats left!
-                        </span>
-                      ) : seatsLeft <= 15 ? (
-                        <span style={{ margin: 0, color: "#d97706", fontWeight: "bold", fontSize: "15px" }}>
-                          ⚡ Filling fast. {seatsLeft} seats available.
-                        </span>
-                      ) : (
-                        <span style={{ margin: 0, color: "#16a34a", fontWeight: "bold", fontSize: "15px" }}>
-                          ✅ {seatsLeft} seats available.
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-              
               {/* Actions Grid */}
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 
                 {/* Primary Button */}
                 <button 
-                  onClick={() => {
-                    if (!selectedDate) {
-                      toast.error("Please select a departure date first!");
-                      return;
-                    }
-                    if (seatsLeft !== null && seatsLeft <= 0) {
-                      toast.error("Sorry, this date is sold out.");
-                      return;
-                    }
-                    // Proceed to booking and pass the date via URL query params!
-                    router.push(`/booking/${pkg.id}?date=${selectedDate}`);
-                  }}
-                  style={{ width: "100%", padding: "18px", background: (seatsLeft !== null && seatsLeft <= 0) ? "#94a3b8" : "#2563eb", color: "white", border: "none", borderRadius: "14px", fontSize: "16px", fontWeight: "800", cursor: (seatsLeft !== null && seatsLeft <= 0) ? "not-allowed" : "pointer", textDecoration: "none", display: "inline-block", textAlign: "center", transition: "opacity 0.2s ease" }} 
-                  onMouseOver={(e) => { if (seatsLeft === null || seatsLeft > 0) e.currentTarget.style.opacity = "0.9" }} 
-                  onMouseOut={(e) => { if (seatsLeft === null || seatsLeft > 0) e.currentTarget.style.opacity = "1" }}
+                  onClick={() => router.push(`/booking/${pkg.id}`)}
+                  style={{ width: "100%", padding: "18px", background: "#2563eb", color: "white", border: "none", borderRadius: "14px", fontSize: "16px", fontWeight: "800", cursor: "pointer", textDecoration: "none", display: "inline-block", textAlign: "center", transition: "opacity 0.2s ease" }} 
+                  onMouseOver={(e) => e.currentTarget.style.opacity = "0.9"} 
+                  onMouseOut={(e) => e.currentTarget.style.opacity = "1"}
                 >
-                  {(seatsLeft !== null && seatsLeft <= 0) ? "Sold Out" : selectedDate ? "Proceed to Booking" : "Check Availability"}
+                  Book Now
                 </button>
 
                 {/* Secondary Outline Button */}

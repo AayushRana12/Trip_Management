@@ -15,16 +15,15 @@ type Vehicle = {
 export default function BookingPage() {
   const { id } = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams(); // 👈 Added!
-  const urlDate = searchParams.get("date"); // 👈 Grab the date from the URL!
+  const searchParams = useSearchParams();
+  const urlDate = searchParams.get("date");
 
   const [user, setUser] = useState<any>({});
-  const [pkg, setPkg] = useState<any>(null); 
-  
+  const [pkg, setPkg] = useState<any>(null);
+
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [date, setDate] = useState("");
-  
-  // ✅ Live Availability States
+
   const [availability, setAvailability] = useState<{ max_capacity: number, booked_dates: any[] } | null>(null);
   const [seatsLeft, setSeatsLeft] = useState<number | null>(null);
 
@@ -32,15 +31,13 @@ export default function BookingPage() {
   const [children, setChildren] = useState(0);
   const [price, setPrice] = useState(0);
 
-  // ✅ Meal Preference State
   const [mealPreference, setMealPreference] = useState("Veg");
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
-  // ✅ Real File Upload States
   const [idProof, setIdProof] = useState<File | null>(null);
-  const [idProofUrl, setIdProofUrl] = useState<string | null>(null); 
+  const [idProofUrl, setIdProofUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const [showPayment, setShowPayment] = useState(false);
@@ -54,7 +51,7 @@ export default function BookingPage() {
   }, []);
 
   useEffect(() => {
-    if (!id) return; 
+    if (!id) return;
 
     fetch(`http://localhost:8000/api/packages/${id}`)
       .then((res) => {
@@ -63,17 +60,17 @@ export default function BookingPage() {
       })
       .then((data) => {
         setPkg(data);
-        setPrice(data.discounted_price ? Number(data.discounted_price) : Number(data.price)); 
-        
-        // Filter out past dates before displaying
+        setPrice(data.discounted_price ? Number(data.discounted_price) : Number(data.price));
+
         if (data.departure_dates && Array.isArray(data.departure_dates) && data.departure_dates.length > 0) {
+          // ✅ UPDATED: Bulletproof date filtering
           const today = new Date().toISOString().split("T")[0];
           const validFutureDates = data.departure_dates.filter((d: string) => d >= today);
           const sortedDates = validFutureDates.sort();
-          
+
           setAvailableDates(sortedDates);
           if (sortedDates.length > 0) {
-            // ✅ THE FIX: Check if the URL passed a date, and use it!
+            // Always force valid selection
             if (urlDate && sortedDates.includes(urlDate)) {
               setDate(urlDate);
             } else {
@@ -89,13 +86,12 @@ export default function BookingPage() {
         toast.error("Failed to load trip details.");
       });
 
-      // ✅ Fetch Availability
-      fetch(`http://localhost:8000/api/packages/${id}/availability`)
-        .then(res => res.json())
-        .then(data => setAvailability(data))
-        .catch(err => console.error("Failed to fetch availability", err));
+    fetch(`http://localhost:8000/api/packages/${id}/availability`)
+      .then(res => res.json())
+      .then(data => setAvailability(data))
+      .catch(err => console.error("Failed to fetch availability", err));
 
-  }, [id, urlDate]); // Added urlDate as a dependency
+  }, [id, urlDate]);
 
   useEffect(() => {
     fetch("http://localhost:8000/api/vehicles")
@@ -104,11 +100,9 @@ export default function BookingPage() {
       .catch(err => console.error("Failed to fetch vehicles", err));
   }, []);
 
-  // ✅ Calculate seats left based on the selected 'date'
   useEffect(() => {
     if (date && availability) {
-      // FIX: Standardize the date string format before comparing!
-      const normalizedDate = date.split('T')[0]; 
+      const normalizedDate = date.split('T')[0];
       const dateRecord = availability.booked_dates.find((d: any) => d.date === normalizedDate);
       const alreadyBooked = dateRecord ? dateRecord.booked : 0;
       setSeatsLeft(availability.max_capacity - alreadyBooked);
@@ -117,19 +111,19 @@ export default function BookingPage() {
     }
   }, [date, availability]);
 
-
   const totalPeople = adults + children;
-  const baseCost = price * totalPeople;
+  const adultsCost = price * adults;
+  const childrenCost = Math.round((price * 0.9) * children);
+  const baseCost = adultsCost + childrenCost;
   const vehicleCost = selectedVehicle ? selectedVehicle.price_per_day : 0;
   const totalPrice = baseCost + vehicleCost;
 
-  // ✅ Function to physically upload the file to Node.js
   const handleFileUpload = async (file: File) => {
-    setIdProof(file); // Update UI immediately
+    setIdProof(file);
     setIsUploading(true);
 
     const formData = new FormData();
-    formData.append("document", file); // Must match the upload.single("document") in backend
+    formData.append("document", file);
 
     try {
       const res = await fetch("http://localhost:8000/api/upload", {
@@ -137,9 +131,9 @@ export default function BookingPage() {
         body: formData,
       });
       const data = await res.json();
-      
+
       if (data.url) {
-        setIdProofUrl(data.url); // Save the REAL server URL!
+        setIdProofUrl(data.url);
         toast.success("Document uploaded securely.");
       } else {
         toast.error("Upload failed on server.");
@@ -155,13 +149,12 @@ export default function BookingPage() {
   };
 
   const handleProceed = () => {
-    // ✅ Mandatory Document Check
     if (!idProofUrl) {
       toast.error(
-        isUploading 
-          ? "Please wait for the document to finish uploading..." 
-          : isInternational 
-            ? "Travel Requirement: Passport is mandatory for international trips." 
+        isUploading
+          ? "Please wait for the document to finish uploading..."
+          : isInternational
+            ? "Travel Requirement: Passport is mandatory for international trips."
             : "Travel Requirement: Please upload a Govt. ID (Aadhar/Voter ID) for hotel check-in."
       );
       return;
@@ -179,7 +172,6 @@ export default function BookingPage() {
     setShowPayment(true);
   };
 
-  // ✅ Load Razorpay script dynamically
   const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
       if (document.getElementById("razorpay-script")) return resolve(true);
@@ -192,7 +184,6 @@ export default function BookingPage() {
     });
   };
 
-  // ✅ Razorpay Payment Handler
   const handlePayment = async () => {
     setLoading(true);
 
@@ -218,7 +209,7 @@ export default function BookingPage() {
       }
 
       const options = {
-        key: "rzp_test_SfKwgt4lOI7Vte", // Replace with actual key for prod
+        key: "rzp_test_SfKwgt4lOI7Vte",
         amount: orderData.order.amount,
         currency: "INR",
         name: "Trip Management",
@@ -237,9 +228,11 @@ export default function BookingPage() {
               package_id: id,
               travel_date: date,
               people: totalPeople,
+              adults: adults,
+              children: children,
               vehicle_id: selectedVehicle ? selectedVehicle.id : null,
-              meal_preference: mealPreference, 
-              id_proof_url: idProofUrl, // ✅ Send the real server URL to the database
+              meal_preference: mealPreference,
+              id_proof_url: idProofUrl,
             }),
           });
 
@@ -301,13 +294,13 @@ export default function BookingPage() {
         }
       `}</style>
       <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-        
+
         <button onClick={() => router.back()} style={{ background: "transparent", border: "none", color: "#64748b", fontWeight: "bold", cursor: "pointer", marginBottom: "30px", fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
           ← Back to details
         </button>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: "40px", alignItems: "start" }}>
-          
+
           {/* =========================================================
               LEFT SIDE: TRIP SUMMARY
               ========================================================= */}
@@ -316,21 +309,22 @@ export default function BookingPage() {
             <div style={{ padding: "30px" }}>
               <h2 style={{ margin: "0 0 10px 0", fontSize: "24px", color: "#0f172a", fontWeight: "800" }}>{pkg.title}</h2>
               {pkg.duration_days && <p style={{ margin: 0, color: "#64748b", fontWeight: "600" }}>⏱️ {pkg.duration_days}</p>}
-              
+
               <hr style={{ border: "none", borderTop: "1px dashed #cbd5e1", margin: "20px 0" }} />
-              
+
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px", color: "#475569", fontSize: "15px", fontWeight: "500" }}>
                 <span>Base Price</span>
                 <strong>₹{price.toLocaleString()}</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px", color: "#475569", fontSize: "15px", fontWeight: "500" }}>
                 <span>Adults (x{adults})</span>
-                <strong>₹{(price * adults).toLocaleString()}</strong>
+                <strong>₹{adultsCost.toLocaleString()}</strong>
               </div>
+
               {children > 0 && (
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px", color: "#475569", fontSize: "15px", fontWeight: "500" }}>
-                  <span>Children (x{children})</span>
-                  <strong>₹{(price * children).toLocaleString()}</strong>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px", color: "#10b981", fontSize: "15px", fontWeight: "600" }}>
+                  <span>Children 10% Off (x{children})</span>
+                  <strong>+ ₹{childrenCost.toLocaleString()}</strong>
                 </div>
               )}
 
@@ -340,9 +334,9 @@ export default function BookingPage() {
                   <strong>+ ₹{vehicleCost.toLocaleString()}</strong>
                 </div>
               )}
-              
+
               <hr style={{ border: "none", borderTop: "2px dashed #e2e8f0", margin: "20px 0" }} />
-              
+
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: "18px", fontWeight: "800", color: "#0f172a" }}>Total Due</span>
                 <span style={{ fontSize: "32px", fontWeight: "900", color: "#2563eb", letterSpacing: "-1px" }}>₹{totalPrice.toLocaleString()}</span>
@@ -358,19 +352,20 @@ export default function BookingPage() {
             <p style={{ color: "#64748b", marginBottom: "40px", fontSize: "15px" }}>Booking for <strong>{user.username || "Guest"}</strong> ({user.email || "No email provided"}).</p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
-              
+
               {/* DEPARTURE DATE DROPDOWN */}
               <div>
                 <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>
                   Select Departure Date
                 </label>
-                
+
                 {availableDates.length > 0 ? (
                   <>
-                    <select 
-                      value={date} 
-                      onChange={(e) => setDate(e.target.value)} 
-                      disabled={showPayment} 
+                    {/* ✅ REVERTED BACK TO A WORKING DROPDOWN */}
+                    <select
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      disabled={showPayment}
                       style={{ width: "100%", padding: "16px", borderRadius: "12px", border: "2px solid #e2e8f0", fontSize: "16px", color: "#334155", outline: "none", cursor: showPayment ? "not-allowed" : "pointer", opacity: showPayment ? 0.6 : 1, fontWeight: "bold", background: "#f8fafc" }}
                     >
                       {availableDates.map(d => (
@@ -422,8 +417,8 @@ export default function BookingPage() {
                 <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>
                   Meal Preference
                 </label>
-                <select 
-                  value={mealPreference} 
+                <select
+                  value={mealPreference}
                   onChange={(e) => setMealPreference(e.target.value)}
                   disabled={showPayment}
                   style={{ width: "100%", padding: "16px", borderRadius: "12px", border: "2px solid #e2e8f0", fontSize: "16px", color: "#334155", outline: "none", opacity: showPayment ? 0.6 : 1, cursor: showPayment ? "not-allowed" : "pointer", background: "#f8fafc" }}
@@ -441,8 +436,8 @@ export default function BookingPage() {
                   Schedule a Vehicle (Optional)
                 </label>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", opacity: showPayment ? 0.6 : 1, pointerEvents: showPayment ? "none" : "auto" }}>
-                  
-                  <div 
+
+                  <div
                     onClick={() => setSelectedVehicle(null)}
                     style={{ padding: "15px", border: selectedVehicle === null ? "2px solid #3b82f6" : "2px solid #e2e8f0", borderRadius: "12px", cursor: "pointer", background: selectedVehicle === null ? "#eff6ff" : "white", transition: "all 0.2s" }}
                   >
@@ -452,7 +447,7 @@ export default function BookingPage() {
                   </div>
 
                   {vehicles.map((v) => (
-                    <div 
+                    <div
                       key={v.id}
                       onClick={() => setSelectedVehicle(v)}
                       style={{ padding: "15px", border: selectedVehicle?.id === v.id ? "2px solid #3b82f6" : "2px solid #e2e8f0", borderRadius: "12px", cursor: "pointer", background: selectedVehicle?.id === v.id ? "#eff6ff" : "white", transition: "all 0.2s" }}
@@ -471,32 +466,32 @@ export default function BookingPage() {
                 <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>
                   {isInternational ? "Passport Copy (Required for Visa/Travel)" : "Govt. ID Proof (Aadhar/DL for Hotel Check-in)"} <span style={{ color: "#ef4444" }}>*</span>
                 </label>
-                
+
                 <div style={{ border: idProof ? "2px solid #10b981" : "2px dashed #cbd5e1", padding: "24px", borderRadius: "12px", textAlign: "center", background: idProof ? "#ecfdf5" : "#f8fafc", position: "relative", transition: "all 0.3s" }}>
                   {idProof ? (
-                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                         <span style={{ fontSize: "24px" }}>{isUploading ? "⏳" : "✅"}</span>
-                         <span style={{ fontSize: "14px", fontWeight: "bold", color: "#065f46", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "250px" }}>
-                           {idProof.name} {isUploading && "(Uploading...)"}
-                         </span>
-                       </div>
-                       {!showPayment && !isUploading && (
-                         <button type="button" onClick={() => { setIdProof(null); setIdProofUrl(null); }} style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer", fontWeight: "bold", textDecoration: "underline" }}>Remove</button>
-                       )}
-                     </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontSize: "24px" }}>{isUploading ? "⏳" : "✅"}</span>
+                        <span style={{ fontSize: "14px", fontWeight: "bold", color: "#065f46", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "250px" }}>
+                          {idProof.name} {isUploading && "(Uploading...)"}
+                        </span>
+                      </div>
+                      {!showPayment && !isUploading && (
+                        <button type="button" onClick={() => { setIdProof(null); setIdProofUrl(null); }} style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer", fontWeight: "bold", textDecoration: "underline" }}>Remove</button>
+                      )}
+                    </div>
                   ) : (
                     <>
                       <span style={{ fontSize: "32px", display: "block", marginBottom: "10px" }}>{isInternational ? "🛂" : "🪪"}</span>
                       <p style={{ margin: "0 0 15px 0", fontSize: "15px", color: "#475569", fontWeight: "600" }}>
                         Click or drag to upload {isInternational ? "Passport" : "ID Proof"}
                       </p>
-                      <input 
-                        type="file" 
-                        accept="image/jpeg, image/png, application/pdf" 
-                        onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])} 
+                      <input
+                        type="file"
+                        accept="image/jpeg, image/png, application/pdf"
+                        onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])}
                         disabled={showPayment || isUploading}
-                        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0, cursor: (showPayment || isUploading) ? "not-allowed" : "pointer" }} 
+                        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0, cursor: (showPayment || isUploading) ? "not-allowed" : "pointer" }}
                       />
                       <button type="button" style={{ padding: "10px 20px", background: "white", color: "#334155", border: "1px solid #cbd5e1", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", pointerEvents: "none", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
                         Browse Files
@@ -513,38 +508,38 @@ export default function BookingPage() {
 
               {/* ACTION BUTTONS */}
               {!showPayment ? (
-                <button 
-                  onClick={handleProceed} 
+                <button
+                  onClick={handleProceed}
                   disabled={availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)}
-                  style={{ 
-                    padding: "20px", 
-                    background: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)) ? "#94a3b8" : "#0f172a", 
-                    color: "white", 
-                    border: "none", 
-                    borderRadius: "14px", 
-                    fontSize: "18px", 
-                    fontWeight: "800", 
-                    cursor: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)) ? "not-allowed" : "pointer", 
-                    transition: "all 0.3s ease", 
-                    boxShadow: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)) ? "none" : "0 10px 20px -5px rgba(15, 23, 42, 0.4)" 
+                  style={{
+                    padding: "20px",
+                    background: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)) ? "#94a3b8" : "#0f172a",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "14px",
+                    fontSize: "18px",
+                    fontWeight: "800",
+                    cursor: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)) ? "not-allowed" : "pointer",
+                    transition: "all 0.3s ease",
+                    boxShadow: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)) ? "none" : "0 10px 20px -5px rgba(15, 23, 42, 0.4)"
                   }}
                 >
-                  {availableDates.length === 0 ? "Unavailable 🚫" : 
-                   (seatsLeft !== null && seatsLeft < totalPeople) ? "Not enough seats 🚫" : 
+                  {availableDates.length === 0 ? "Unavailable 🚫" :
+                   (seatsLeft !== null && seatsLeft < totalPeople) ? "Not enough seats 🚫" :
                    "Proceed to Secure Payment →"}
                 </button>
               ) : (
                 <div style={{ padding: "24px", background: "#fef3c7", borderRadius: "16px", border: "1px solid #fde68a", textAlign: "center" }}>
                   <p style={{ margin: "0 0 15px 0", color: "#b45309", fontWeight: "bold", fontSize: "16px" }}>Review your final total: ₹{totalPrice.toLocaleString()}</p>
-                  
-                  <button 
-                    onClick={handlePayment} 
-                    disabled={loading} 
+
+                  <button
+                    onClick={handlePayment}
+                    disabled={loading}
                     style={{ width: "100%", padding: "20px", background: loading ? "#94a3b8" : "#16a34a", color: "white", border: "none", borderRadius: "12px", fontSize: "18px", fontWeight: "900", cursor: loading ? "not-allowed" : "pointer", boxShadow: loading ? "none" : "0 10px 20px -5px rgba(22, 163, 74, 0.4)" }}
                   >
                     {loading ? "Initializing Secure Gateway..." : "Pay Now with Razorpay 💳"}
                   </button>
-                  
+
                   {!loading && (
                     <button onClick={() => setShowPayment(false)} style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', marginTop: '15px', cursor: 'pointer', fontWeight: "bold" }}>
                       ← Wait, go back and edit details

@@ -115,7 +115,7 @@ function AdminContent() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
-  const [activeTab, setActiveTab] = useState("analytics"); // ✅ Default to Analytics
+  const [activeTab, setActiveTab] = useState("analytics"); 
 
   // Advanced Analytics State
   const [analytics, setAnalytics] = useState<AnalyticsData>({
@@ -125,6 +125,9 @@ function AdminContent() {
     bookingsVolume: [], 
     tripType: []
   });
+
+  // ✅ NEW: Year-wise Revenue State (Feature #5)
+  const [yearlyRevenue, setYearlyRevenue] = useState<{ year: string; revenue: number }[]>([]);
 
   // Modals
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
@@ -169,7 +172,6 @@ function AdminContent() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  // ✅ Upgraded Stats State
   const [stats, setStats] = useState({ 
     users: 0, 
     bookings: 0, 
@@ -179,7 +181,7 @@ function AdminContent() {
     cancellationRate: 0, 
     averageBookingValue: 0, 
     pendingTickets: 0,
-    capacityAlerts: [] as any[] // ✅ Added Capacity Alerts
+    capacityAlerts: [] as any[]
   });
   const [loading, setLoading] = useState(true);
 
@@ -187,15 +189,16 @@ function AdminContent() {
 
   const fetchData = async () => {
     try {
-      // ✅ Fetching all data in parallel, including the new advanced analytics
-      const [pkgs, bks, offs, usrs, comps, stts, analyticsData] = await Promise.all([
+      // ✅ Added the Yearly Revenue fetch call
+      const [pkgs, bks, offs, usrs, comps, stts, analyticsData, yearlyRevData] = await Promise.all([
         fetch("http://localhost:8000/api/packages").then(r => r.json()),
         fetch("http://localhost:8000/api/admin/bookings").then(r => r.json()),
         fetch("http://localhost:8000/api/offers").then(r => r.json()),
         fetch("http://localhost:8000/api/admin/users").then(r => r.json()),
         fetch("http://localhost:8000/api/admin/complaints").then(r => r.json()),
         fetch("http://localhost:8000/api/admin/stats").then(r => r.json()),
-        fetch("http://localhost:8000/api/admin/advanced-analytics").then(r => r.json())
+        fetch("http://localhost:8000/api/admin/advanced-analytics").then(r => r.json()),
+        fetch("http://localhost:8000/api/admin/yearly-revenue").then(r => r.json()).catch(() => []) 
       ]);
 
       setPackages(pkgs);
@@ -204,9 +207,11 @@ function AdminContent() {
       if (Array.isArray(comps)) setComplaints(comps);
       setStats(stts);
       if (Array.isArray(bks)) setBookings(bks);
-
-      // ✅ Set the advanced analytics state
       setAnalytics(analyticsData);
+      
+      if (Array.isArray(yearlyRevData)) {
+        setYearlyRevenue(yearlyRevData.map((item: any) => ({ year: item.year, revenue: Number(item.revenue) })));
+      }
 
     } catch (err) {
       console.error("Data fetch error", err);
@@ -367,7 +372,6 @@ function AdminContent() {
     }
   };
 
-  // DELETE LOGIC
   const triggerDelete = (id: number, type: 'package' | 'offer' | 'user') => {
     setItemToDelete({ id, type });
     setIsDeleteModalOpen(true);
@@ -489,10 +493,9 @@ function AdminContent() {
       <Toaster position="top-center" />
       <h2 className="admin-title">Admin Dashboard ⚙️</h2>
 
-      {/* ✅ UPGRADED KPI CARDS */}
+      {/* KPI CARDS */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "20px", marginBottom: "25px" }}>
         
-        {/* 1. Revenue Card with Trend */}
         <div style={{ background: "white", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
           <p style={{ margin: "0 0 10px 0", color: "#64748b", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>💰 Net Revenue</p>
           <h2 style={{ margin: "0 0 10px 0", color: "#0f172a", fontSize: "28px" }}>₹{(stats.revenue || 0).toLocaleString()}</h2>
@@ -501,7 +504,6 @@ function AdminContent() {
           </span>
         </div>
 
-        {/* 2. Bookings Card with Trend */}
         <div style={{ background: "white", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
           <p style={{ margin: "0 0 10px 0", color: "#64748b", fontSize: "14px", fontWeight: "bold", textTransform: "uppercase" }}>📦 Total Bookings</p>
           <h2 style={{ margin: "0 0 10px 0", color: "#0f172a", fontSize: "28px" }}>{stats.bookings}</h2>
@@ -510,7 +512,6 @@ function AdminContent() {
           </span>
         </div>
 
-        {/* 3. Average Booking Value & Cancellation Rate */}
         <div style={{ background: "white", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <div>
             <p style={{ margin: "0 0 5px 0", color: "#64748b", fontSize: "13px", fontWeight: "bold", textTransform: "uppercase" }}>Avg. Booking Value (ABV)</p>
@@ -522,7 +523,6 @@ function AdminContent() {
           </div>
         </div>
 
-        {/* 4. Action Center (Users & Complaints) */}
         <div style={{ background: "white", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <div>
             <p style={{ margin: "0 0 5px 0", color: "#64748b", fontSize: "13px", fontWeight: "bold", textTransform: "uppercase" }}>👥 Total Users</p>
@@ -550,11 +550,9 @@ function AdminContent() {
         ))}
       </div>
 
-      {/* ✅ ADVANCED ANALYTICS TAB (UPGRADED UI) */}
       {activeTab === "analytics" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "24px", marginTop: "24px" }}>
           
-          {/* ✅ SMART INVENTORY ALERTS */}
           {stats.capacityAlerts && stats.capacityAlerts.length > 0 && (
             <div style={{ background: "#fef2f2", borderLeft: "6px solid #ef4444", padding: "20px", borderRadius: "12px", boxShadow: "0 4px 12px rgba(239, 68, 68, 0.1)", display: "flex", flexDirection: "column", gap: "10px" }}>
               <h3 style={{ margin: 0, color: "#991b1b", display: "flex", alignItems: "center", gap: "8px", fontSize: "16px" }}>
@@ -586,10 +584,10 @@ function AdminContent() {
             }
           `}</style>
 
-          {/* ROW 1: FULL WIDTH REVENUE TREND */}
+          {/* ROW 1: MONTHLY REVENUE TREND */}
           <div style={{ background: "white", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
             <h3 style={{ marginBottom: "20px", color: "#0f172a", fontSize: "18px", display: "flex", alignItems: "center", gap: "8px" }}>
-              📈 Revenue Trend
+              📈 Monthly Revenue Trend
             </h3>
             <ResponsiveContainer width="100%" height={320}>
               <AreaChart data={analytics.revenueTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -608,10 +606,23 @@ function AdminContent() {
             </ResponsiveContainer>
           </div>
 
+          {/* ✅ ROW 1.5: YEARLY REVENUE (Feature #5) */}
+          <div style={{ background: "white", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
+            <h3 style={{ marginBottom: "20px", color: "#0f172a", fontSize: "18px" }}>📆 Year-wise Booking Revenue</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={yearlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="year" stroke="#64748b" tick={{fill: '#0f172a', fontSize: 14, fontWeight: 'bold'}} axisLine={false} tickLine={false} dy={10} />
+                <YAxis tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`} stroke="#64748b" tick={{fill: '#64748b', fontSize: 13}} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{fill: '#f8fafc'}} formatter={(value: any) => `₹${Number(value).toLocaleString()}`} contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }} />
+                <Bar dataKey="revenue" fill="#8b5cf6" radius={[6, 6, 0, 0]} barSize={60} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
           {/* ROW 2: 50/50 SPLIT (Volume & Top Earners) */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
             
-            {/* BOOKINGS VOLUME */}
             <div style={{ background: "white", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
               <h3 style={{ marginBottom: "20px", color: "#0f172a", fontSize: "16px" }}>📊 Monthly Bookings Volume</h3>
               <ResponsiveContainer width="100%" height={280}>
@@ -625,15 +636,12 @@ function AdminContent() {
               </ResponsiveContainer>
             </div>
 
-            {/* TOP EARNERS (Now has 50% screen width to breathe!) */}
             <div style={{ background: "white", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
               <h3 style={{ marginBottom: "20px", color: "#0f172a", fontSize: "16px" }}>🏆 Top Revenue Packages</h3>
               <ResponsiveContainer width="100%" height={280}>
-                {/* Notice the increased left margin to accommodate long names */}
                 <BarChart data={analytics.topRevenuePackages} layout="vertical" margin={{ left: 110, right: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                   <XAxis type="number" tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`} stroke="#64748b" tick={{fontSize: 12}} axisLine={false} tickLine={false} />
-                  {/* Notice the increased width={130} so text doesn't wrap awkwardly */}
                   <YAxis dataKey="name" type="category" width={130} tick={{fontSize: 11, fill: '#334155', fontWeight: 500}} axisLine={false} tickLine={false} />
                   <Tooltip formatter={(value: any) => `₹${Number(value).toLocaleString()}`} cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }} />
                   <Bar dataKey="revenue" fill="#10b981" radius={[0, 6, 6, 0]} barSize={24} />
@@ -645,7 +653,6 @@ function AdminContent() {
           {/* ROW 3: 50/50 SPLIT (The Donut Charts) */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
             
-            {/* STATUS BREAKDOWN */}
             <div style={{ background: "white", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
               <h3 style={{ marginBottom: "20px", color: "#0f172a", fontSize: "16px", textAlign: "center" }}>⚖️ Booking Status</h3>
               <ResponsiveContainer width="100%" height={220}>
@@ -661,12 +668,10 @@ function AdminContent() {
               </ResponsiveContainer>
             </div>
 
-            {/* DOMESTIC VS INTERNATIONAL */}
             <div style={{ background: "white", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
               <h3 style={{ marginBottom: "20px", color: "#0f172a", fontSize: "16px", textAlign: "center" }}>🌍 Trip Demographics</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
-                  {/* Changed to a Donut Chart to match the Status Breakdown styling */}
                   <Pie data={analytics.tripType} innerRadius={60} outerRadius={85} paddingAngle={6} dataKey="value" stroke="none">
                     {analytics.tripType.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.name === 'International' ? '#8b5cf6' : '#f43f5e'} />
@@ -711,7 +716,6 @@ function AdminContent() {
               style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1", minHeight: "80px", resize: "vertical" }}
             />
 
-            {/* ✅ ITINERARY BUILDER */}
             <div style={{ marginTop: "20px", padding: "15px", background: "#f1f5f9", borderRadius: "12px" }}>
               <h4 style={{ marginBottom: "10px" }}>Day-wise Itinerary</h4>
               {itinerary.map((dayText, index) => (
@@ -795,7 +799,6 @@ function AdminContent() {
               style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #cbd5e1", minHeight: "80px", marginBottom: "10px", resize: "vertical" }}
             />
 
-            {/* ✅ EDIT ITINERARY BUILDER */}
             <div style={{ marginTop: "20px", padding: "15px", background: "#f1f5f9", borderRadius: "12px", marginBottom: "15px" }}>
               <h4 style={{ marginBottom: "10px" }}>Day-wise Itinerary</h4>
               {editItinerary.map((dayText, index) => (
@@ -893,7 +896,7 @@ function AdminContent() {
         </div>
       )}
 
-      {/* Action Confirmation Modal (Resolve / Cancel) */}
+      {/* Action Confirmation Modal */}
       {isActionModalOpen && actionData && (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 }}>
           <div className="modal-box" style={{ background: 'white', padding: '30px', borderRadius: '12px', width: '350px', textAlign: 'center' }}>
@@ -908,7 +911,7 @@ function AdminContent() {
         </div>
       )}
 
-      {/* ✅ User Trip History Modal */}
+      {/* User Trip History Modal */}
       {isHistoryModalOpen && (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 }} onClick={() => setIsHistoryModalOpen(false)}>
           <div className="modal-box" style={{ background: 'white', padding: '30px', borderRadius: '16px', width: '600px', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }} onClick={(e) => e.stopPropagation()}>
@@ -963,16 +966,12 @@ function AdminContent() {
             </thead>
             <tbody>
               {bookings.map((b) => {
-                // Safeguard against DB column naming mismatches
                 const proofUrl = b.id_proof_url || (b as any).id_proof;
-
                 return (
                   <tr key={b.id} className="admin-table-row">
                     <td><strong>{b.title}</strong></td>
                     <td>{b.username}</td>
                     <td style={{ padding: "15px", color: "#475569" }}>{safeFormatDate(b.travel_date)}</td>
-
-                    {/* ✅ NEW: ID Proof Column Logic */}
                     <td style={{ padding: "15px" }}>
                       {proofUrl ? (
                         <a
@@ -987,7 +986,6 @@ function AdminContent() {
                         <span style={{ color: "#94a3b8", fontSize: "12px" }}>No Doc</span>
                       )}
                     </td>
-
                     <td style={{ padding: "15px", color: "#16a34a", fontWeight: "bold" }}>₹{Number(b.total_price).toLocaleString()}</td>
                     <td>{b.status === "confirmed" ? "✅" : "❌"}</td>
                     <td>
@@ -1023,7 +1021,6 @@ function AdminContent() {
                   <td>{u.contact_number || "N/A"}</td>
                   <td>{u.city || "N/A"}</td>
                   <td style={{ display: "flex", gap: "10px" }}>
-                    {/* ✅ View History Button */}
                     <button onClick={() => viewUserHistory(u.email, u.username)} style={{ padding: "6px 12px", background: "#f1f5f9", color: "#3b82f6", border: "1px solid #bfdbfe", borderRadius: "6px", fontWeight: "bold", cursor: "pointer", fontSize: "12px" }}>
                       View History
                     </button>
