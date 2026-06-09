@@ -9,7 +9,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const multer = require('multer'); // ✅ Added multer
 const { generateOTP, sendOTPMail, sendBookingConfirmation, sendCancellationEmail } = require('./utils/mailer');
-const cors = require('cors');
+
 
 app.use(cors({
   // Allow both your local environment and your live Vercel site
@@ -18,7 +18,7 @@ app.use(cors({
 }));
 const app = express();
 
-app.use(cors());
+
 app.use(express.json());
 
 // 1. Tell Express to serve the uploads folder statically
