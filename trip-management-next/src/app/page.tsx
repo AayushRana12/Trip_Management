@@ -12,7 +12,10 @@ export default function HomePage() {
   const [searchDestination, setSearchDestination] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/packages")
+    // This dynamically uses your live Render URL in production, or localhost if you are testing locally
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    
+    fetch(`${API_URL}/api/packages`)
       .then((res) => res.json())
       .then((data) => {
         setFeaturedPackages(data.slice(0, 3));
