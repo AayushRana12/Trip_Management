@@ -19,7 +19,7 @@
   justify-content: center;
   align-items: center;
   /* ✅ Changed from Unsplash to your local backend server! */
-background-image: linear-gradient(to bottom, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.75)), url('http://localhost:8000/images/homePage-background.jpg');  background-size: cover;
+background-image: linear-gradient(to bottom, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.75)), url('${API_BASE_URL}/images/homePage-background.jpg');  background-size: cover;
   background-position: center;
   color: white;
   padding: 0 20px;

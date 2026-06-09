@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast, { Toaster } from "react-hot-toast";
+import { API_BASE_URL } from "@/config";
+
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -20,7 +22,7 @@ export default function ForgotPasswordPage() {
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/api/forgot-password/send-otp", {
+      const res = await fetch("${API_BASE_URL}/api/forgot-password/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -48,7 +50,7 @@ export default function ForgotPasswordPage() {
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/api/forgot-password/reset", {
+      const res = await fetch("${API_BASE_URL}/api/forgot-password/reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp, newPassword }),

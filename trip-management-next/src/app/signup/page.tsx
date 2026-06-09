@@ -115,7 +115,7 @@ export default function SignupPage() {
   useEffect(() => {
     const fetchStates = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/states");
+        const res = await fetch("${API_BASE_URL}/api/states");
         if (!res.ok) throw new Error("Failed to fetch states");
         const data = await res.json();
         setStates(data);
@@ -196,7 +196,7 @@ export default function SignupPage() {
   const requestOTP = async () => {
     if (!validateForm()) return;
     try {
-      const res = await fetch("http://localhost:8000/api/send-otp", {
+      const res = await fetch("${API_BASE_URL}/api/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: formData.email }),
@@ -214,7 +214,7 @@ export default function SignupPage() {
 
   const handleFinalSignup = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/register", {
+      const res = await fetch("${API_BASE_URL}/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, contact_number: formData.contactNumber, otp }),

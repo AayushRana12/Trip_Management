@@ -4,6 +4,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import "@/assets/styles/booking.css";
+import { API_BASE_URL } from "@/config";
 
 type Vehicle = {
   id: number;
@@ -53,7 +54,7 @@ export default function BookingPage() {
   useEffect(() => {
     if (!id) return;
 
-    fetch(`http://localhost:8000/api/packages/${id}`)
+    fetch(`${API_BASE_URL}/api/packages/${id}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch package");
         return res.json();
@@ -86,7 +87,7 @@ export default function BookingPage() {
         toast.error("Failed to load trip details.");
       });
 
-    fetch(`http://localhost:8000/api/packages/${id}/availability`)
+    fetch(`${API_BASE_URL}/api/packages/${id}/availability`)
       .then(res => res.json())
       .then(data => setAvailability(data))
       .catch(err => console.error("Failed to fetch availability", err));
@@ -94,7 +95,7 @@ export default function BookingPage() {
   }, [id, urlDate]);
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/vehicles")
+    fetch("${API_BASE_URL}/api/vehicles")
       .then(res => res.json())
       .then(data => setVehicles(data))
       .catch(err => console.error("Failed to fetch vehicles", err));
@@ -126,7 +127,7 @@ export default function BookingPage() {
     formData.append("document", file);
 
     try {
-      const res = await fetch("http://localhost:8000/api/upload", {
+      const res = await fetch("${API_BASE_URL}/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -195,7 +196,7 @@ export default function BookingPage() {
         return;
       }
 
-      const orderRes = await fetch("http://localhost:8000/api/payment/create-order", {
+      const orderRes = await fetch("${API_BASE_URL}/api/payment/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: totalPrice }),
@@ -217,7 +218,7 @@ export default function BookingPage() {
         order_id: orderData.order.id,
 
         handler: async function (response: any) {
-          const verifyRes = await fetch("http://localhost:8000/api/payment/verify", {
+          const verifyRes = await fetch("${API_BASE_URL}/api/payment/verify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

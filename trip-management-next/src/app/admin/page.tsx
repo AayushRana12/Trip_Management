@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import AdminRoute from "@/components/AdminRoute";
 import toast, { Toaster } from "react-hot-toast";
 import "@/assets/styles/dashboard.css";
+import { API_BASE_URL } from "@/config";
 import {
   BarChart,
   Bar,
@@ -191,14 +192,14 @@ function AdminContent() {
     try {
       // ✅ Added the Yearly Revenue fetch call
       const [pkgs, bks, offs, usrs, comps, stts, analyticsData, yearlyRevData] = await Promise.all([
-        fetch("http://localhost:8000/api/packages").then(r => r.json()),
-        fetch("http://localhost:8000/api/admin/bookings").then(r => r.json()),
-        fetch("http://localhost:8000/api/offers").then(r => r.json()),
-        fetch("http://localhost:8000/api/admin/users").then(r => r.json()),
-        fetch("http://localhost:8000/api/admin/complaints").then(r => r.json()),
-        fetch("http://localhost:8000/api/admin/stats").then(r => r.json()),
-        fetch("http://localhost:8000/api/admin/advanced-analytics").then(r => r.json()),
-        fetch("http://localhost:8000/api/admin/yearly-revenue").then(r => r.json()).catch(() => []) 
+        fetch("${API_BASE_URL}/api/packages").then(r => r.json()),
+        fetch("${API_BASE_URL}/api/admin/bookings").then(r => r.json()),
+        fetch("${API_BASE_URL}/api/offers").then(r => r.json()),
+        fetch("${API_BASE_URL}/api/admin/users").then(r => r.json()),
+        fetch("${API_BASE_URL}/api/admin/complaints").then(r => r.json()),
+        fetch("${API_BASE_URL}/api/admin/stats").then(r => r.json()),
+        fetch("${API_BASE_URL}/api/admin/advanced-analytics").then(r => r.json()),
+        fetch("${API_BASE_URL}/api/admin/yearly-revenue").then(r => r.json()).catch(() => []) 
       ]);
 
       setPackages(pkgs);
@@ -287,7 +288,7 @@ function AdminContent() {
   const handleAddPackage = async () => {
     if (!title || !price || !image || departureDates.length === 0) return toast.error("Fill all fields and add at least one date.");
     try {
-      const res = await fetch("http://localhost:8000/api/packages", {
+      const res = await fetch("${API_BASE_URL}/api/packages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -313,7 +314,7 @@ function AdminContent() {
   const handleUpdatePackage = async () => {
     if (!selectedPackage) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/packages/${selectedPackage.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/packages/${selectedPackage.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -346,7 +347,7 @@ function AdminContent() {
     if (endDate < startDate) return toast.error("End date cannot be earlier than the start date.");
 
     try {
-      const res = await fetch("http://localhost:8000/api/offers", {
+      const res = await fetch("${API_BASE_URL}/api/offers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -381,9 +382,9 @@ function AdminContent() {
     if (!itemToDelete) return;
     try {
       let url = "";
-      if (itemToDelete.type === 'package') url = `http://localhost:8000/api/packages/${itemToDelete.id}`;
-      else if (itemToDelete.type === 'offer') url = `http://localhost:8000/api/offers/${itemToDelete.id}`;
-      else if (itemToDelete.type === 'user') url = `http://localhost:8000/api/admin/users/${itemToDelete.id}`;
+      if (itemToDelete.type === 'package') url = `${API_BASE_URL}/api/packages/${itemToDelete.id}`;
+      else if (itemToDelete.type === 'offer') url = `${API_BASE_URL}/api/offers/${itemToDelete.id}`;
+      else if (itemToDelete.type === 'user') url = `${API_BASE_URL}/api/admin/users/${itemToDelete.id}`;
 
       const res = await fetch(url, { method: "DELETE" });
       const data = await res.json();
@@ -445,11 +446,11 @@ function AdminContent() {
     if (!actionData) return;
     try {
       if (actionData.type === 'cancel_booking') {
-        await fetch(`http://localhost:8000/api/bookings/${actionData.id}/cancel`, { method: "PUT" });
+        await fetch(`${API_BASE_URL}/api/bookings/${actionData.id}/cancel`, { method: "PUT" });
         toast.success("Booking Cancelled");
         fetchData();
       } else if (actionData.type === 'resolve_complaint') {
-        await fetch(`http://localhost:8000/api/admin/complaints/${actionData.id}/resolve`, { method: "PUT" });
+        await fetch(`${API_BASE_URL}/api/admin/complaints/${actionData.id}/resolve`, { method: "PUT" });
         toast.success("Complaint Resolved! ✅");
         fetchData();
       }
@@ -975,7 +976,7 @@ function AdminContent() {
                     <td style={{ padding: "15px" }}>
                       {proofUrl ? (
                         <a
-                          href={`http://localhost:8000${proofUrl}`}
+                          href={`${API_BASE_URL}${proofUrl}`}
                           target="_blank"
                           rel="noreferrer"
                           style={{ color: "#2563eb", fontWeight: "bold", textDecoration: "underline", fontSize: "13px" }}

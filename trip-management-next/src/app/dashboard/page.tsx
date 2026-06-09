@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import toast, { Toaster } from "react-hot-toast"; 
 import "@/assets/styles/dashboard.css";
+import { API_BASE_URL } from "@/config";
 
 // ✅ TYPES
 type Booking = {
@@ -72,10 +73,10 @@ function DashboardContent() {
     try {
       if (!user.id) return;
 
-      const bookRes = await fetch(`http://localhost:8000/api/bookings/${user.id}`);
+      const bookRes = await fetch(`${API_BASE_URL}/api/bookings/${user.id}`);
       const bookData = await bookRes.json();
       
-      const compRes = await fetch(`http://localhost:8000/api/complaints/user/${user.id}`);
+      const compRes = await fetch(`${API_BASE_URL}/api/complaints/user/${user.id}`);
       const compData = await compRes.json();
 
       if (Array.isArray(bookData)) {
@@ -108,7 +109,7 @@ function DashboardContent() {
   const executeRebook = async () => {
     if (!confirmModal.id) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/bookings/${confirmModal.id}/rebook`, { method: "PUT" });
+      const res = await fetch(`${API_BASE_URL}/api/bookings/${confirmModal.id}/rebook`, { method: "PUT" });
       
       if (res.ok) {
         toast.success("Trip Re-booked Successfully! 🎉");
@@ -156,7 +157,7 @@ function DashboardContent() {
   const confirmCancellation = async () => {
     if (!userActionData) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/bookings/${userActionData.id}/cancel`, { method: "PUT" });
+      const res = await fetch(`${API_BASE_URL}/api/bookings/${userActionData.id}/cancel`, { method: "PUT" });
       if (res.ok) {
         toast.success("Booking Cancelled ❌");
         setIsCancelModalOpen(false);
@@ -196,7 +197,7 @@ function DashboardContent() {
     if (!message.trim()) return toast.error("Please enter your complaint message.");
 
     try {
-      const res = await fetch("http://localhost:8000/api/complaints", {
+      const res = await fetch("${API_BASE_URL}/api/complaints", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id, message })

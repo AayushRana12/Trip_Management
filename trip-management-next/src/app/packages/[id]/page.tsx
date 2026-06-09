@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import toast, { Toaster } from "react-hot-toast";
+import { API_BASE_URL } from "@/config";
 
 export default function PackageDetailsPage() {
   const { id } = useParams();
@@ -24,7 +25,7 @@ export default function PackageDetailsPage() {
   useEffect(() => {
     if (!id) return;
     
-    fetch(`http://localhost:8000/api/packages/${id}?t=${new Date().getTime()}`)
+    fetch(`${API_BASE_URL}/api/packages/${id}?t=${new Date().getTime()}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch package details");
         return res.json();
@@ -38,7 +39,7 @@ export default function PackageDetailsPage() {
         setLoading(false);
       });
 
-    fetch(`http://localhost:8000/api/packages/${id}/reviews`)
+    fetch(`${API_BASE_URL}/api/packages/${id}/reviews`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -58,7 +59,7 @@ export default function PackageDetailsPage() {
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`http://localhost:8000/api/packages/${id}/reviews`, {
+      const res = await fetch(`${API_BASE_URL}/api/packages/${id}/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_name: userName, rating: userRating, comment })

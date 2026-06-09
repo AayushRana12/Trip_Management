@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import ReactMarkdown from "react-markdown";
+import { API_BASE_URL } from "@/config";
 
 export default function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -47,7 +48,7 @@ export default function Chatbot() {
       // Only fetch if we have both the token and the user ID
       if (token && user.id) {
         // Updated URL to match your Dashboard exact route!
-        const res = await fetch(`http://localhost:8000/api/bookings/${user.id}`, {
+        const res = await fetch(`${API_BASE_URL}/api/bookings/${user.id}`, {
           headers: {
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"

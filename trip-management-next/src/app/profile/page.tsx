@@ -69,7 +69,7 @@ export default function ProfilePage() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8000/api/users/profile", {
+      const res = await fetch("${API_BASE_URL}/api/users/profile", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -109,7 +109,7 @@ export default function ProfilePage() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://localhost:8000/api/users/profile", {
+      const res = await fetch("${API_BASE_URL}/api/users/profile", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
