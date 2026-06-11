@@ -300,7 +300,7 @@ export default function BookingPage() {
   );
 
   return (
-    <main className="booking-container" style={{ background: "#f8fafc", minHeight: "100vh", padding: "60px 20px", fontFamily: "sans-serif" }}>
+    <main className="booking-container" style={{ background: "#f8fafc", minHeight: "100vh", padding: "60px 20px"}}>
       <Toaster position="top-center" />
       <style>{`
         @keyframes pulse {

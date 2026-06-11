@@ -12,7 +12,14 @@
 .booking-container {
   /* Removed max-width to allow the 1100px grid in page.tsx to work properly */
   width: 100%;
-  
+}
+
+/* Force absolutely everything to inherit the global Next.js font */
+.booking-container *,
+.booking-container input,
+.booking-container button,
+.booking-container select {
+  font-family: inherit !important;
 }
 
 .booking-section {
