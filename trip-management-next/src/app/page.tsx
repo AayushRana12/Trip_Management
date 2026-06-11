@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import "@/assets/styles/home.css"; // ✅ Importing our clean CSS!
-
+import { API_BASE_URL } from "@/config";
 
 export default function HomePage() {
   const router = useRouter();
@@ -14,9 +14,8 @@ export default function HomePage() {
 
   useEffect(() => {
     // This dynamically uses your live Render URL in production, or localhost if you are testing locally
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
     
-    fetch(`${API_URL}/api/packages`)
+    fetch(`${API_BASE_URL}/api/packages`)
       .then((res) => res.json())
       .then((data) => {
         setFeaturedPackages(data.slice(0, 3));

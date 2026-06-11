@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import "@/assets/styles/booking.css";
 import { API_BASE_URL } from "@/config";
@@ -34,9 +34,15 @@ export default function BookingPage() {
 
   const [mealPreference, setMealPreference] = useState("Veg");
 
+  // Transfer State
+  const [transferOption, setTransferOption] = useState("none"); // "none", "arrival", "round_trip"
+  const [arrivalPoint, setArrivalPoint] = useState("");
+  const [arrivalTime, setArrivalTime] = useState("");
+
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
+  // File Upload State
   const [idProof, setIdProof] = useState<File | null>(null);
   const [idProofUrl, setIdProofUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -64,14 +70,12 @@ export default function BookingPage() {
         setPrice(data.discounted_price ? Number(data.discounted_price) : Number(data.price));
 
         if (data.departure_dates && Array.isArray(data.departure_dates) && data.departure_dates.length > 0) {
-          // ✅ UPDATED: Bulletproof date filtering
           const today = new Date().toISOString().split("T")[0];
           const validFutureDates = data.departure_dates.filter((d: string) => d >= today);
           const sortedDates = validFutureDates.sort();
 
           setAvailableDates(sortedDates);
           if (sortedDates.length > 0) {
-            // Always force valid selection
             if (urlDate && sortedDates.includes(urlDate)) {
               setDate(urlDate);
             } else {
@@ -119,33 +123,37 @@ export default function BookingPage() {
   const vehicleCost = selectedVehicle ? selectedVehicle.price_per_day : 0;
   const totalPrice = baseCost + vehicleCost;
 
-  const handleFileUpload = async (file: File) => {
-    setIdProof(file);
-    setIsUploading(true);
+  // Integrated file upload logic handling both state and API server upload
+  const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setIdProof(file);
+      setIsUploading(true);
 
-    const formData = new FormData();
-    formData.append("document", file);
+      const formData = new FormData();
+      formData.append("document", file);
 
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/upload`, {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
 
-      if (data.url) {
-        setIdProofUrl(data.url);
-        toast.success("Document uploaded securely.");
-      } else {
-        toast.error("Upload failed on server.");
+        if (data.url) {
+          setIdProofUrl(data.url);
+          toast.success("Document uploaded securely.");
+        } else {
+          toast.error("Upload failed on server.");
+          setIdProof(null);
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Network error during upload.");
         setIdProof(null);
+      } finally {
+        setIsUploading(false);
       }
-    } catch (err) {
-      console.error(err);
-      toast.error("Network error during upload.");
-      setIdProof(null);
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -156,8 +164,13 @@ export default function BookingPage() {
           ? "Please wait for the document to finish uploading..."
           : isInternational
             ? "Travel Requirement: Passport is mandatory for international trips."
-            : "Travel Requirement: Please upload a Govt. ID (Aadhar/Voter ID) for hotel check-in."
+            : "Travel Requirement: Please upload a Govt. ID for hotel check-in."
       );
+      return;
+    }
+
+    if (transferOption !== "none" && (!arrivalPoint || !arrivalTime)) {
+      toast.error("Please provide arrival point and time for your transfer.");
       return;
     }
 
@@ -165,6 +178,7 @@ export default function BookingPage() {
       toast.error("Please select a travel date and at least 1 person.");
       return;
     }
+    
     if (!user || !user.id) {
       toast.error("Session expired. Please log in again.");
       router.push("/login");
@@ -231,8 +245,10 @@ export default function BookingPage() {
               people: totalPeople,
               adults: adults,
               children: children,
-              vehicle_id: selectedVehicle ? selectedVehicle.id : null,
               meal_preference: mealPreference,
+              transfer_option: transferOption,
+              arrival_point: arrivalPoint,
+              arrival_time: arrivalTime,
               id_proof_url: idProofUrl,
             }),
           });
@@ -248,12 +264,11 @@ export default function BookingPage() {
           }
         },
 
-        prefill: {
-          name: user.username || "",
-          email: user.email || "",
-          contact: "",
+       prefill: {
+          name: user?.username ? user.username : "Test User",
+          email: user?.email ? user.email : "test@example.com",
+          contact: user?.phone ? user.phone : "9876543210",
         },
-
         theme: { color: "#2563eb" },
 
         modal: {
@@ -285,7 +300,7 @@ export default function BookingPage() {
   );
 
   return (
-    <main style={{ background: "#f8fafc", minHeight: "100vh", padding: "60px 20px", fontFamily: "sans-serif" }}>
+    <main className="booking-container" style={{ background: "#f8fafc", minHeight: "100vh", padding: "60px 20px", fontFamily: "sans-serif" }}>
       <Toaster position="top-center" />
       <style>{`
         @keyframes pulse {
@@ -329,10 +344,10 @@ export default function BookingPage() {
                 </div>
               )}
 
-              {selectedVehicle && (
+              {transferOption !== "none" && (
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px", color: "#0ea5e9", fontWeight: "bold" }}>
-                  <span>{selectedVehicle.image} Vehicle ({selectedVehicle.name})</span>
-                  <strong>+ ₹{vehicleCost.toLocaleString()}</strong>
+                  <span>🚗 Last-Mile Transfer</span>
+                  <strong>{transferOption === "arrival" ? "Arrival Only" : "Round Trip"}</strong>
                 </div>
               )}
 
@@ -362,7 +377,6 @@ export default function BookingPage() {
 
                 {availableDates.length > 0 ? (
                   <>
-                    {/* ✅ REVERTED BACK TO A WORKING DROPDOWN */}
                     <select
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
@@ -431,78 +445,126 @@ export default function BookingPage() {
                 </select>
               </div>
 
-              {/* Vehicle Selection */}
-              <div>
-                <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>
-                  Schedule a Vehicle (Optional)
-                </label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", opacity: showPayment ? 0.6 : 1, pointerEvents: showPayment ? "none" : "auto" }}>
+              {/* =========================================================
+                  1. LAST-MILE TRANSFERS
+                  ========================================================= */}
+              <div className="booking-section">
+                <h3 className="section-title" style={{ display: "block", marginBottom: "15px", fontWeight: "700", color: "#1e293b", fontSize: "16px" }}>Last-Mile Transfers (Optional)</h3>
 
+                <div className="transfer-options-grid" style={{ pointerEvents: showPayment ? "none" : "auto", opacity: showPayment ? 0.6 : 1 }}>
                   <div
-                    onClick={() => setSelectedVehicle(null)}
-                    style={{ padding: "15px", border: selectedVehicle === null ? "2px solid #3b82f6" : "2px solid #e2e8f0", borderRadius: "12px", cursor: "pointer", background: selectedVehicle === null ? "#eff6ff" : "white", transition: "all 0.2s" }}
+                    className={`transfer-card ${transferOption === "none" ? "selected" : ""}`}
+                    onClick={() => setTransferOption("none")}
                   >
-                    <div style={{ fontSize: "20px", marginBottom: "5px" }}>🚶</div>
-                    <div style={{ fontWeight: "bold", color: "#1e293b" }}>No Vehicle</div>
-                    <div style={{ fontSize: "13px", color: "#64748b" }}>I'll manage my own transport</div>
+                    <span className="transfer-icon">🚶‍♂️</span>
+                    <h4>No Transfers</h4>
+                    <p>I'll reach the hotel myself</p>
                   </div>
 
-                  {vehicles.map((v) => (
-                    <div
-                      key={v.id}
-                      onClick={() => setSelectedVehicle(v)}
-                      style={{ padding: "15px", border: selectedVehicle?.id === v.id ? "2px solid #3b82f6" : "2px solid #e2e8f0", borderRadius: "12px", cursor: "pointer", background: selectedVehicle?.id === v.id ? "#eff6ff" : "white", transition: "all 0.2s" }}
-                    >
-                      <div style={{ fontSize: "20px", marginBottom: "5px" }}>{v.image}</div>
-                      <div style={{ fontWeight: "bold", color: "#1e293b" }}>{v.name}</div>
-                      <div style={{ fontSize: "13px", color: "#16a34a", fontWeight: "bold", marginTop: "4px" }}>+ ₹{v.price_per_day.toLocaleString()}</div>
-                    </div>
-                  ))}
+                  <div
+                    className={`transfer-card ${transferOption === "arrival" ? "selected" : ""}`}
+                    onClick={() => setTransferOption("arrival")}
+                  >
+                    <span className="transfer-icon">🛬</span>
+                    <h4>Arrival Pickup</h4>
+                    <p>Airport/Station to Hotel on Day 1</p>
+                  </div>
 
+                  <div
+                    className={`transfer-card ${transferOption === "round_trip" ? "selected" : ""}`}
+                    onClick={() => setTransferOption("round_trip")}
+                  >
+                    <span className="transfer-icon">🚕</span>
+                    <h4>Round-Trip Transfers</h4>
+                    <p>Pickup on arrival & Drop-off on departure</p>
+                  </div>
                 </div>
+
+                {/* SMART CONDITIONAL RENDERING */}
+                {transferOption !== "none" && (
+                  <div className="transfer-details-container" style={{ marginTop: "20px", padding: "20px", background: "#f1f5f9", borderRadius: "12px" }}>
+                    <p className="transfer-reminder" style={{ fontSize: "14px", color: "#475569", marginBottom: "15px" }}>
+                      📅 Transport will be automatically scheduled based on your trip dates.
+                    </p>
+
+                    <div className="input-group" style={{ marginBottom: "15px" }}>
+                      <label style={{ display: "block", fontSize: "14px", fontWeight: "bold", marginBottom: "8px" }}>Arrival Point (Airport or Train Station) *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Airport Name  or Railway Station Name"
+                        value={arrivalPoint}
+                        onChange={(e) => setArrivalPoint(e.target.value)}
+                        required
+                        disabled={showPayment}
+                        style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+                      />
+                    </div>
+
+                    <div className="input-group">
+                      <label style={{ display: "block", fontSize: "14px", fontWeight: "bold", marginBottom: "8px" }}>Arrival Time / Flight Number *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., 14:30 / Indigo 6E-214"
+                        value={arrivalTime}
+                        onChange={(e) => setArrivalTime(e.target.value)}
+                        required
+                        disabled={showPayment}
+                        style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #cbd5e1" }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* ✅ SMART DOCUMENT UPLOAD */}
-              <div>
-                <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>
-                  {isInternational ? "Passport Copy (Required for Visa/Travel)" : "Govt. ID Proof (Aadhar/DL for Hotel Check-in)"} <span style={{ color: "#ef4444" }}>*</span>
-                </label>
-
-                <div style={{ border: idProof ? "2px solid #10b981" : "2px dashed #cbd5e1", padding: "24px", borderRadius: "12px", textAlign: "center", background: idProof ? "#ecfdf5" : "#f8fafc", position: "relative", transition: "all 0.3s" }}>
-                  {idProof ? (
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <span style={{ fontSize: "24px" }}>{isUploading ? "⏳" : "✅"}</span>
-                        <span style={{ fontSize: "14px", fontWeight: "bold", color: "#065f46", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "250px" }}>
-                          {idProof.name} {isUploading && "(Uploading...)"}
-                        </span>
+              {/* =========================================================
+                  2. PASSPORT UPLOAD (Restricted format)
+                  ========================================================= */}
+              <div className="booking-section">
+                <h3 className="section-title" style={{ display: "block", marginBottom: "15px", fontWeight: "700", color: "#1e293b", fontSize: "16px" }}>
+                  {isInternational ? "Passport Copy (Required for Visa/Travel) *" : "Govt. ID Proof (Required for Hotel Check-in) *"}
+                </h3>
+                
+                <div className="file-upload-container">
+                  <div className="upload-box" style={{ border: idProof ? "2px solid #10b981" : "2px dashed #cbd5e1", padding: "24px", borderRadius: "12px", textAlign: "center", background: idProof ? "#ecfdf5" : "#f8fafc", position: "relative" }}>
+                    
+                    {idProof ? (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                          <span style={{ fontSize: "24px" }}>{isUploading ? "⏳" : "✅"}</span>
+                          <span className="file-name" style={{ fontSize: "14px", fontWeight: "bold", color: "#065f46", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "250px" }}>
+                            {idProof.name} {isUploading && "(Uploading...)"}
+                          </span>
+                        </div>
+                        {!showPayment && !isUploading && (
+                          <button type="button" onClick={() => { setIdProof(null); setIdProofUrl(null); }} style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer", fontWeight: "bold", textDecoration: "underline" }}>Remove</button>
+                        )}
                       </div>
-                      {!showPayment && !isUploading && (
-                        <button type="button" onClick={() => { setIdProof(null); setIdProofUrl(null); }} style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer", fontWeight: "bold", textDecoration: "underline" }}>Remove</button>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      <span style={{ fontSize: "32px", display: "block", marginBottom: "10px" }}>{isInternational ? "🛂" : "🪪"}</span>
-                      <p style={{ margin: "0 0 15px 0", fontSize: "15px", color: "#475569", fontWeight: "600" }}>
-                        Click or drag to upload {isInternational ? "Passport" : "ID Proof"}
-                      </p>
-                      <input
-                        type="file"
-                        accept="image/jpeg, image/png, application/pdf"
-                        onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])}
-                        disabled={showPayment || isUploading}
-                        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0, cursor: (showPayment || isUploading) ? "not-allowed" : "pointer" }}
-                      />
-                      <button type="button" style={{ padding: "10px 20px", background: "white", color: "#334155", border: "1px solid #cbd5e1", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", pointerEvents: "none", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-                        Browse Files
-                      </button>
-                    </>
-                  )}
+                    ) : (
+                      <>
+                        <span className="upload-icon" style={{ fontSize: "32px", display: "block", marginBottom: "10px" }}>{isInternational ? "🛂" : "🪪"}</span>
+                        <p style={{ margin: "0 0 15px 0", fontSize: "15px", color: "#475569", fontWeight: "600" }}>Click or drag to upload {isInternational ? "Passport" : "ID Proof"}</p>
+                        
+                        {/* 🔥 RESTRICTED FILE UPLOAD */}
+                        <input
+                          type="file"
+                          accept=".jpg, .jpeg, .pdf, .png"
+                          onChange={handleFileUpload}
+                          className="file-input"
+                          id="passport-upload"
+                          disabled={showPayment || isUploading}
+                          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0, cursor: (showPayment || isUploading) ? "not-allowed" : "pointer" }}
+                        />
+                        
+                        <label htmlFor="passport-upload" className="btn-browse" style={{ padding: "10px 20px", background: "white", color: "#334155", border: "1px solid #cbd5e1", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", display: "inline-block", pointerEvents: "none", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
+                          Browse Files
+                        </label>
+                      </>
+                    )}
+                  </div>
+                  <p className="upload-hint" style={{ color: "#94a3b8", fontWeight: "500", marginTop: "10px", display: "block", fontSize: "13px" }}>
+                    Accepted formats: JPG, JPEG, PDF, PNG (Max 5MB).
+                  </p>
                 </div>
-                <small style={{ color: "#94a3b8", fontWeight: "500", marginTop: "10px", display: "block", fontSize: "13px" }}>
-                  Accepted formats: JPG, PNG, PDF (Max 5MB). Kept secure for travel verification only.
-                </small>
               </div>
 
               <hr style={{ border: "none", borderTop: "1px solid #e2e8f0", margin: "10px 0" }} />
@@ -511,6 +573,7 @@ export default function BookingPage() {
               {!showPayment ? (
                 <button
                   onClick={handleProceed}
+                  className="btn-proceed"
                   disabled={availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)}
                   style={{
                     padding: "20px",
@@ -522,7 +585,8 @@ export default function BookingPage() {
                     fontWeight: "800",
                     cursor: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)) ? "not-allowed" : "pointer",
                     transition: "all 0.3s ease",
-                    boxShadow: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)) ? "none" : "0 10px 20px -5px rgba(15, 23, 42, 0.4)"
+                    boxShadow: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)) ? "none" : "0 10px 20px -5px rgba(15, 23, 42, 0.4)",
+                    width: "100%"
                   }}
                 >
                   {availableDates.length === 0 ? "Unavailable 🚫" :

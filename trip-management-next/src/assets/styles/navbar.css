@@ -1,81 +1,225 @@
+/* =========================================================
+   BASE NAVBAR & SCROLL EFFECTS
+   ========================================================= */
+.navbar-skeleton {
+  height: 70px;
+  background: #0f172a;
+}
+
 .navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  padding: 15px 40px;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+  background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
+  border-bottom: 1px solid transparent;
+}
+
+.navbar.scrolled {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+/* 🔥 DESKTOP LAYOUT STRUCTURE */
+/* 🔥 DESKTOP LAYOUT STRUCTURE */
+@media (min-width: 769px) {
+  .navbar {
+    display: flex;
+    align-items: center;
+  }
+
+  .navbar-content {
+    display: flex;
+    flex: 1; /* Takes up all space to the right of the logo */
+    align-items: center;
+  }
+
+  .nav-links {
+    flex: 1; /* This centers the links and pushes the auth buttons to the right */
+    display: flex;
+    justify-content: center;
+  }
+}
+
+/* =========================================================
+   HEADER (Logo & Hamburger)
+   ========================================================= */
+.navbar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 10%;
-  background: linear-gradient(135deg, #4f46e5, #3b82f6);
+}
+
+.hamburger-btn {
+  display: none; /* Hidden on desktop */
+  background: none;
+  border: none;
   color: white;
+  font-size: 26px;
+  cursor: pointer;
+  padding: 0;
 }
 
-/* LOGO */
-.logo {
-  font-size: 22px;
-  font-weight: bold;
+.logo-link {
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-/* LINKS */
+.logo-icon { font-size: 26px; }
+
+.logo-text {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  display: inline-block;
+}
+
+/* =========================================================
+   NAV LINKS & BUTTONS (Desktop Styles)
+   ========================================================= */
 .nav-links {
   display: flex;
-  gap: 25px;
-}
-
-.nav-links a {
-  position: relative;
-  text-decoration: none;
-  color: white;
-  font-weight: 500;
-}
-
-/* 🔥 UNDERLINE ANIMATION */
-.nav-links a::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -5px;
-  width: 0%;
-  height: 2px;
-  background: white;
-  transition: 0.3s;
-}
-
-.nav-links a:hover::after {
-  width: 100%;
-}
-
-/* ACTIVE LINK */
-.nav-links .active {
-  font-weight: bold;
-}
-
-.nav-links .active::after {
-  width: 100%;
-}
-
-/* AUTH */
-.auth-buttons {
-  display: flex;
-  gap: 15px;
+  gap: 30px;
   align-items: center;
 }
 
-.signup {
-  background: white;
-  color: #3b82f6;
-  padding: 6px 12px;
-  border-radius: 6px;
+.nav-link {
+  text-decoration: none;
+  color: #94a3b8;
+  font-weight: 700;
+  font-size: 15px;
+  transition: color 0.2s;
+  border-bottom: 2px solid transparent;
+  padding-bottom: 4px;
 }
 
-.auth-buttons button {
-  background: white;
-  color: #3b82f6;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
+.nav-link:hover { color: white; }
+.nav-link.active { color: #38bdf8; border-bottom: 2px solid #38bdf8; }
+.nav-link.active:hover { color: #38bdf8; }
+
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
-/* USER */
-.user-email {
-  font-size: 14px;
+.user-group {
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
+.user-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(56, 189, 248, 0.1); color: #38bdf8;
+  display: flex; justify-content: center; align-items: center;
+  font-weight: 900; font-size: 16px; cursor: pointer;
+  border: 2px solid rgba(56, 189, 248, 0.4);
+  transition: all 0.2s ease;
+}
+
+.user-avatar:hover {
+  background: #38bdf8; color: #0f172a; transform: scale(1.05);
+}
+
+.logout-btn {
+  background: transparent; color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  padding: 8px 16px; border-radius: 8px;
+  cursor: pointer; font-weight: 700; font-size: 14px;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.1); border-color: #ef4444; color: #ef4444;
+}
+
+.login-link {
+  text-decoration: none; font-weight: 700; color: #e2e8f0; font-size: 15px;
+  transition: color 0.2s;
+}
+
+.login-link:hover { color: white; }
+
+.signup-btn {
+  background: #2563eb; color: white; padding: 10px 22px;
+  border-radius: 100px; text-decoration: none; font-weight: 700;
+  font-size: 15px; transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+}
+
+.signup-btn:hover { background: #1d4ed8; transform: translateY(-1px); }
+
+/* =========================================================
+   🔥 MOBILE RESPONSIVENESS (The Hamburger Menu)
+   ========================================================= */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 15px 20px;
+  }
+
+  .hamburger-btn {
+    display: block; /* Show hamburger button on mobile */
+  }
+
+  .navbar-content {
+    display: none; /* Hide menu content by default */
+    flex-direction: column;
+    width: 100%;
+    margin-top: 20px;
+    gap: 20px;
+    padding-bottom: 10px;
+  }
+
+  /* When the state is true, this class is added to show the menu */
+  .navbar-content.show {
+    display: flex;
+    animation: slideDown 0.3s ease forwards;
+  }
+
+  .nav-links {
+    flex-direction: column;
+    width: 100%;
+    gap: 20px;
+  }
+
+  .auth-buttons {
+    flex-direction: column;
+    width: 100%;
+    gap: 15px;
+  }
+
+  .signup-btn {
+    width: 100%;
+    text-align: center;
+    box-sizing: border-box;
+  }
+
+  .logout-btn {
+    width: 100%;
+    text-align: center;
+  }
+  
+  .user-group {
+    width: 100%;
+    justify-content: space-between; /* Spreads avatar and logout button */
+  }
+}
+
+/* Smooth dropdown animation */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

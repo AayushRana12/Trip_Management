@@ -1,9 +1,29 @@
+/* =========================================================
+   BASE LAYOUT
+   ========================================================= */
 .booking-page {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 70vh;
   background: #f5f7fb;
+}
+
+.booking-container {
+  /* Removed max-width to allow the 1100px grid in page.tsx to work properly */
+  width: 100%;
+  
+}
+
+.booking-section {
+  margin-bottom: 30px;
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 15px;
 }
 
 .booking-card {
@@ -19,6 +39,9 @@
   text-align: center;
 }
 
+/* =========================================================
+   FORMS & INPUTS
+   ========================================================= */
 .form-group {
   margin-bottom: 15px;
   display: flex;
@@ -42,6 +65,168 @@
   border-color: #4f46e5;
 }
 
+.input-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 6px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.input-group input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+}
+
+/* =========================================================
+   TRANSFER CARDS
+   ========================================================= */
+.transfer-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.transfer-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 15px;
+  cursor: pointer;
+  background: white;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.transfer-card:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+/* The Blue Highlight for Selected State */
+.transfer-card.selected {
+  border: 2px solid #2563eb;
+  background: #eff6ff;
+}
+
+.transfer-icon {
+  font-size: 20px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.transfer-card h4 {
+  margin: 0 0 5px 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.transfer-card p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* Conditional Details Box */
+.transfer-details-container {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  animation: fadeInDown 0.3s ease;
+}
+
+.transfer-reminder {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* =========================================================
+   FILE UPLOAD (PASSPORT/ID)
+   ========================================================= */
+.upload-box {
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 30px;
+  text-align: center;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.upload-box:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.upload-icon {
+  font-size: 28px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.upload-box p {
+  margin: 0 0 15px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+/* Hides the default input button to use our custom label button */
+/* Ensure the input covers the box invisibly */
+.file-input {
+  display: block; 
+}
+
+.btn-browse {
+  display: inline-block;
+  background: white;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-browse:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.file-name {
+  margin-top: 15px !important;
+  font-size: 13px !important;
+  color: #2563eb !important;
+  font-weight: 700 !important;
+}
+
+.upload-hint {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 10px;
+}
+
+/* =========================================================
+   BUTTONS & TYPOGRAPHY
+   ========================================================= */
 .book-btn {
   width: 100%;
   padding: 12px;
@@ -58,6 +243,24 @@
   opacity: 0.9;
 }
 
+.btn-proceed {
+  width: 100%;
+  background: #0f172a;
+  color: white;
+  padding: 16px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 10px;
+}
+
+.btn-proceed:hover {
+  background: #1e293b;
+}
+
 .total-price {
   margin-top: 10px;
   font-size: 16px;
@@ -66,7 +269,9 @@
   text-align: center;
 }
 
-/* 🔹 MODAL BACKGROUND */
+/* =========================================================
+   MODALS
+   ========================================================= */
 .payment-modal {
   position: fixed;
   top: 0;
@@ -74,38 +279,21 @@
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.6);
-
   display: flex;
   justify-content: center;
   align-items: center;
-
   z-index: 1000;
 }
 
-/* 🔹 MODAL BOX */
 .payment-box {
   background: white;
   padding: 30px;
   border-radius: 12px;
   text-align: center;
   width: 300px;
-
   animation: popup 0.3s ease;
 }
 
-/* 🔹 ANIMATION */
-@keyframes popup {
-  from {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* 🔹 BUTTONS */
 .pay-btn {
   width: 100%;
   padding: 12px;
@@ -131,4 +319,23 @@
 .pay-btn:hover,
 .close-btn:hover {
   opacity: 0.9;
+}
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+@keyframes popup {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }

@@ -568,11 +568,13 @@ app.post("/api/payment/verify", async (req, res) => {
       user_id, 
       package_id, 
       travel_date, 
-      people, // Keep for backward compatibility if needed
+      people, 
       adults,
       children,
-      vehicle_id, 
       meal_preference, 
+      transfer_option, 
+      arrival_point,   
+      arrival_time,    
       id_proof_url 
     } = req.body;
 
@@ -631,21 +633,12 @@ app.post("/api/payment/verify", async (req, res) => {
       const childTotal = (price * 0.9) * childCount;
       let total = adultTotal + childTotal;
 
-      let vehicleCost = 0;
-      if (vehicle_id) {
-        const vehRes = await client.query("SELECT price_per_day FROM vehicles WHERE id = $1", [vehicle_id]);
-        if (vehRes.rows.length > 0) {
-          vehicleCost = Number(vehRes.rows[0].price_per_day);
-          total += vehicleCost; 
-        }
-      }
-
       const query = `
         INSERT INTO bookings (
           package_id, user_id, travel_date, people, adults, children, status, 
-          meal_preference, vehicle_id, id_proof_url, price, vehicle_price, total_price
+          meal_preference, id_proof_url, price, total_price, transfer_option, arrival_point, arrival_time
         ) 
-        VALUES ($1, $2, $3, $4, $5, $6, 'confirmed', $7, $8, $9, $10, $11, $12) 
+        VALUES ($1, $2, $3, $4, $5, $6, 'confirmed', $7, $8, $9, $10, $11, $12, $13) 
         RETURNING *;
       `;
       
@@ -653,15 +646,16 @@ app.post("/api/payment/verify", async (req, res) => {
         package_id, 
         user_id, 
         travel_date, 
-        totalPeople, // Keep total count for capacity checks
-        adultCount,  // Save adult count
-        childCount,  // Save child count
+        totalPeople, 
+        adultCount,  
+        childCount,  
         meal_preference || 'Any', 
-        vehicle_id || null, 
         id_proof_url || null,
         price,
-        vehicleCost,
-        total
+        total,
+        transfer_option || 'none',
+        arrival_point || null,
+        arrival_time || null
       ]);
 
       await client.query(
@@ -709,9 +703,9 @@ app.post("/api/payment/verify", async (req, res) => {
 
 /* ================= BOOKINGS ================= */
 
-// ✅ Old mock booking route (Updated with new Pricing & Capacity mapping)
+// ✅ Old mock booking route (Updated with new Transfer system mapping)
 app.post("/api/book", async (req, res) => {
-  const { user_id, package_id, travel_date, people, adults, children, vehicle_id, meal_preference, id_proof_url } = req.body; 
+  const { user_id, package_id, travel_date, people, adults, children, meal_preference, transfer_option, arrival_point, arrival_time, id_proof_url } = req.body; 
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -738,21 +732,12 @@ app.post("/api/book", async (req, res) => {
     const childTotal = (price * 0.5) * childCount;
     let total = adultTotal + childTotal;
 
-    let vehicleCost = 0;
-    if (vehicle_id) {
-      const vehRes = await client.query("SELECT price_per_day FROM vehicles WHERE id = $1", [vehicle_id]);
-      if (vehRes.rows.length > 0) {
-        vehicleCost = Number(vehRes.rows[0].price_per_day);
-        total += vehicleCost; 
-      }
-    }
-
     const query = `
       INSERT INTO bookings (
         package_id, user_id, travel_date, people, adults, children, status, 
-        meal_preference, vehicle_id, id_proof_url, price, vehicle_price, total_price
+        meal_preference, id_proof_url, price, total_price, transfer_option, arrival_point, arrival_time
       ) 
-      VALUES ($1, $2, $3, $4, $5, $6, 'confirmed', $7, $8, $9, $10, $11, $12) 
+      VALUES ($1, $2, $3, $4, $5, $6, 'confirmed', $7, $8, $9, $10, $11, $12, $13) 
       RETURNING *;
     `;
     
@@ -760,15 +745,16 @@ app.post("/api/book", async (req, res) => {
       package_id, 
       user_id, 
       travel_date, 
-      totalPeople, // Keep total count for capacity checks
-      adultCount,  // Save adult count
-      childCount,  // Save child count
+      totalPeople, 
+      adultCount,  
+      childCount,  
       meal_preference || 'Any', 
-      vehicle_id || null, 
       id_proof_url || null,
       price,
-      vehicleCost,
-      total
+      total,
+      transfer_option || 'none',
+      arrival_point || null,
+      arrival_time || null
     ]);
     
     const pay_id = "PAY_" + Date.now();
