@@ -136,17 +136,26 @@ app.post("/api/upload-multiple", upload.array("images", 5), (req, res) => {
 /* ================= AUTH & OTP ROUTES ================= */
 app.post("/api/send-otp", async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ message: "Email is required" });
-
-  const otp = generateOTP();
+  
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
 
   try {
-    await sendOTPMail(email, otp);
+    const otp = generateOTP();
+    
+    // 1. Save the OTP to your memory object (required for the register route to work)
     tempOTPs.set(email, { otp, expires: Date.now() + 300000 });
-    res.json({ message: "OTP sent! Check your inbox." });
-  } catch (err) {
-    console.error("❌ Mailer Error:", err);
-    res.status(500).json({ message: "Failed to send email" });
+
+    // 2. Fire the email function (It will run in the background)
+    sendOTPMail(email, otp).catch(err => console.error("❌ Background Mailer Error:", err));
+
+    // 3. IMMEDIATELY send success to the frontend so it doesn't hang!
+    res.status(200).json({ message: "Verification Code sent! Check your inbox." });
+    
+  } catch (error) {
+    console.error("OTP Route Error:", error);
+    res.status(500).json({ error: "Failed to process OTP request" });
   }
 });
 
@@ -251,8 +260,8 @@ app.post("/api/login", async (req, res) => {
         username: validUser.mappedName,
         email: validUser.email,
         role: userRole, // It's good to keep this so your frontend knows the role!
-        contact_number: validUser.contact_number, // 🔥 CHANGED 'user' TO 'validUser'
-        city: validUser.city                      // 🔥 CHANGED 'user' TO 'validUser'
+        contact_number: validUser.contact_number, 
+        city: validUser.city                      
       },
     });
 
@@ -276,11 +285,12 @@ app.post("/api/forgot-password/send-otp", async (req, res) => {
     }
 
     const otp = generateOTP();
-    await sendOTPMail(cleanEmail, otp);
-
+    
+    // Save OTP to memory and trigger email in background
     tempOTPs.set(cleanEmail, { otp, expires: Date.now() + 300000 });
+    sendOTPMail(cleanEmail, otp).catch(err => console.error("❌ Background Mailer Error:", err));
 
-    res.json({ message: "OTP sent to your email! 📩" });
+    res.status(200).json({ message: "OTP sent to your email! 📩" });
   } catch (err) {
     console.error("❌ Forgot Password Error:", err);
     res.status(500).json({ message: "Failed to process request." });

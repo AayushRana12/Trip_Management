@@ -1,13 +1,22 @@
-const { Resend } = require('resend');
-const resend = new Resend(process.env.RESEND_API_KEY);
+const nodemailer = require("nodemailer");
+
+// Set up the Gmail transporter
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS, // Your 16-character Google App Password
+  },
+});
 
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-const sendOTPMail = async (toEmail, otp) => {
-  await resend.emails.send({
-    from: 'onboarding@resend.dev',
+const sendOTPMail = (toEmail, otp) => {
+  // Notice: NO 'await' here. It fires in the background.
+  transporter.sendMail({
+    from: process.env.EMAIL_USER,
     to: toEmail,
     subject: 'Your TripManager Verification Code',
     html: `
@@ -18,12 +27,12 @@ const sendOTPMail = async (toEmail, otp) => {
         <p style="font-size: 12px; color: #666;">This code will expire in 5 minutes.</p>
       </div>
     `,
-  });
+  }).catch(err => console.error("Background OTP Error:", err));
 };
 
-const sendBookingConfirmation = async (userEmail, userName, tripDetails) => {
-  await resend.emails.send({
-    from: 'onboarding@resend.dev',
+const sendBookingConfirmation = (userEmail, userName, tripDetails) => {
+  transporter.sendMail({
+    from: process.env.EMAIL_USER,
     to: userEmail,
     subject: `✈️ Booking Confirmed: ${tripDetails.title}`,
     html: `
@@ -44,12 +53,12 @@ const sendBookingConfirmation = async (userEmail, userName, tripDetails) => {
         </div>
       </div>
     `
-  });
+  }).catch(err => console.error("Background Booking Error:", err));
 };
 
-const sendCancellationEmail = async (userEmail, userName, tripDetails) => {
-  await resend.emails.send({
-    from: 'onboarding@resend.dev',
+const sendCancellationEmail = (userEmail, userName, tripDetails) => {
+  transporter.sendMail({
+    from: process.env.EMAIL_USER,
     to: userEmail,
     subject: `❌ Trip Cancelled: ${tripDetails.title}`,
     html: `
@@ -66,12 +75,11 @@ const sendCancellationEmail = async (userEmail, userName, tripDetails) => {
             <p><strong>Travel Date:</strong> ${new Date(tripDetails.date).toLocaleDateString('en-IN')}</p>
             <p><strong>Amount Paid:</strong> ₹${Number(tripDetails.price).toLocaleString()}</p>
             <p><strong>Refund Status:</strong> ${tripDetails.refundStatus}</p>
-            ${tripDetails.refundAmount > 0 ? `<p><strong>Refund Amount:</strong> ₹${Number(tripDetails.refundAmount).toLocaleString()}</p>` : ''}
           </div>
         </div>
       </div>
     `
-  });
+  }).catch(err => console.error("Background Cancellation Error:", err));
 };
 
 module.exports = { generateOTP, sendOTPMail, sendBookingConfirmation, sendCancellationEmail };
