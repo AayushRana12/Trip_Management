@@ -249,3 +249,53 @@
   font-size: 18px;
   margin-bottom: 15px;
 }
+
+.booking-team-section {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.team-title {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.team-member-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.team-icon {
+  font-size: 24px;
+}
+
+.team-name {
+  margin: 0;
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.team-name span {
+  font-weight: normal;
+  color: #64748b;
+}
+
+.team-contact {
+  margin: 0;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.team-pending {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-style: italic;
+}

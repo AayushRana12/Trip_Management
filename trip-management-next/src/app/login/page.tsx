@@ -41,7 +41,9 @@ export default function LoginPage() {
 
       toast.success("Login successful! 🎉");
       
-      setTimeout(() => { router.push("/"); }, 1000);
+      // ✅ CHANGED: Using a hard redirect instead of Next.js router
+      // This forces a full page reload so the Navbar immediately catches the new localStorage data!
+      window.location.href = "/"; 
 
     } catch (err) {
       console.error(err);
@@ -102,21 +104,8 @@ export default function LoginPage() {
           {loading ? "Authenticating..." : "Sign In"}
         </button>
 
-        {/* Divider */}
-        <div className="auth-divider">
-          <div className="auth-line"></div>
-          <span className="auth-or">Or</span>
-          <div className="auth-line"></div>
-        </div>
+    
 
-        {/* Social Login Button */}
-        <button 
-          onClick={() => toast.error("Google authentication coming soon!")} 
-          className="auth-btn-social"
-        >
-           <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: "20px" }}/>
-           Continue with Google
-        </button>
 
         {/* Sign Up Redirect */}
         <p className="auth-footer-text">

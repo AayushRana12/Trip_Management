@@ -121,6 +121,17 @@ app.post("/api/upload", upload.single("document"), (req, res) => {
   res.json({ url: `/uploads/${req.file.filename}` }); 
 });
 
+// ✅ 4. API route to handle MULTIPLE hotel images
+app.post("/api/upload-multiple", upload.array("images", 5), (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: "No files uploaded" });
+  }
+  
+  // Create an array of public URLs for the uploaded images
+  const urls = req.files.map(file => `/uploads/${file.filename}`);
+  res.json({ urls }); 
+});
+
 
 /* ================= AUTH & OTP ROUTES ================= */
 app.post("/api/send-otp", async (req, res) => {
@@ -419,11 +430,20 @@ app.get("/api/packages/:id", async (req, res) => {
 });
 
 app.post("/api/packages", async (req, res) => {
-  const { title, price, image, departure_dates, duration_days, description, itinerary } = req.body; 
+  const { title, price, image, departure_dates, duration_days, description, itinerary, hotel_images } = req.body; 
   try {
     const result = await pool.query(
-      "INSERT INTO packages (title, price, image, departure_dates, duration_days, description, itinerary) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *", 
-      [title, price, image, JSON.stringify(departure_dates || []), duration_days, description, JSON.stringify(itinerary || [])] 
+      "INSERT INTO packages (title, price, image, departure_dates, duration_days, description, itinerary, hotel_images) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *", 
+      [
+        title, 
+        price, 
+        image, 
+        JSON.stringify(departure_dates || []), 
+        duration_days, 
+        description, 
+        JSON.stringify(itinerary || []),
+        hotel_images || [] // PostgreSQL array format handles this natively or via JSON
+      ] 
     );
     res.json(result.rows[0]);
   } catch (err) { 
@@ -433,11 +453,21 @@ app.post("/api/packages", async (req, res) => {
 
 app.put("/api/packages/:id", async (req, res) => {
   const { id } = req.params;
-  const { title, price, image, departure_dates, duration_days, description, itinerary } = req.body;
+  const { title, price, image, departure_dates, duration_days, description, itinerary, hotel_images } = req.body;
   try {
     const result = await pool.query(
-      "UPDATE packages SET title=$1, price=$2, image=$3, departure_dates=$4, duration_days=$5, description=$6, itinerary=$7 WHERE id=$8 RETURNING *",
-      [title, price, image, JSON.stringify(departure_dates || []), duration_days, description, JSON.stringify(itinerary || []), id]
+      "UPDATE packages SET title=$1, price=$2, image=$3, departure_dates=$4, duration_days=$5, description=$6, itinerary=$7, hotel_images=$8 WHERE id=$9 RETURNING *",
+      [
+        title, 
+        price, 
+        image, 
+        JSON.stringify(departure_dates || []), 
+        duration_days, 
+        description, 
+        JSON.stringify(itinerary || []), 
+        hotel_images || [], 
+        id
+      ]
     );
     res.json(result.rows[0]);
   } catch (err) { 
@@ -558,145 +588,116 @@ app.post("/api/payment/create-order", async (req, res) => {
   }
 });
 
-// 2. Verify Payment & Save Booking
-app.post("/api/payment/verify", async (req, res) => {
+// 2. Verify Payment & Save Booking (ACID Compliant)
+app.post('/api/payment/verify', async (req, res) => {
+  const { 
+    razorpay_order_id, 
+    razorpay_payment_id, 
+    razorpay_signature, 
+    user_id, 
+    package_id, 
+    travel_date,
+    people,
+    adults,
+    children,
+    meal_preference,
+    transfer_option,
+    arrival_point,
+    arrival_time,
+    id_proof_url 
+  } = req.body;
+
+  // --- STEP 1: Verify the Razorpay Signature ---
+  const generated_signature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET) 
+    .update(razorpay_order_id + "|" + razorpay_payment_id)
+    .digest('hex');
+
+  if (generated_signature !== razorpay_signature) {
+    return res.status(400).json({ success: false, error: "Payment verification failed. Invalid signature." });
+  }
+
+  // --- STEP 2: Database Transaction ---
+  const client = await pool.connect(); 
+
   try {
-    const { 
-      razorpay_order_id, 
-      razorpay_payment_id, 
-      razorpay_signature, 
-      user_id, 
-      package_id, 
-      travel_date, 
-      people, 
-      adults,
-      children,
-      meal_preference, 
-      transfer_option, 
-      arrival_point,   
-      arrival_time,    
-      id_proof_url 
-    } = req.body;
+    await client.query('BEGIN'); 
 
-    const body = razorpay_order_id + '|' + razorpay_payment_id;
-    const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-      .update(body)
-      .digest('hex');
+    // A. Fetch Package Price & Calculate Total Securely
+    const pkgRes = await client.query(`
+      SELECT p.price, p.title,
+      CASE WHEN o.id IS NOT NULL THEN p.price - (p.price * (o.discount_percentage / 100)) ELSE p.price END AS final_price 
+      FROM packages p 
+      LEFT JOIN offers o ON p.id = o.package_id AND o.is_active = true AND CURRENT_DATE >= o.start_date AND CURRENT_DATE <= o.end_date 
+      WHERE p.id = $1`, [package_id]);
+    
+    if (pkgRes.rows.length === 0) throw new Error("Package not found");
+    
+    const basePrice = Number(pkgRes.rows[0].final_price);
+    const adultCount = Number(adults) || 1;
+    const childCount = Number(children) || 0;
+    const total_price = (basePrice * adultCount) + ((basePrice * 0.5) * childCount); 
 
-    if (expectedSignature !== razorpay_signature) {
-      return res.status(400).json({ success: false, message: "Invalid payment signature ❌" });
-    }
+    // B. Create the Confirmed Booking FIRST (to get the booking_id)
+    const bookingQuery = `
+      INSERT INTO bookings (
+        package_id, user_id, travel_date, people, adults, children, status, 
+        meal_preference, id_proof_url, price, total_price, transfer_option, arrival_point, arrival_time
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, 'confirmed', $7, $8, $9, $10, $11, $12, $13)
+      RETURNING id;
+    `;
+    
+    const bookingValues = [
+      package_id, user_id, travel_date, people, adultCount, childCount,
+      meal_preference || 'Any', id_proof_url || null, basePrice, total_price,
+      transfer_option || 'none', arrival_point || null, arrival_time || null
+    ];
+    
+    const bookingResult = await client.query(bookingQuery, bookingValues);
+    const newBookingId = bookingResult.rows[0].id;
 
-    const client = await pool.connect();
+    // C. Insert the payment record SECOND (Attached to the new booking_id)
+    const paymentQuery = `
+      INSERT INTO payments (booking_id, user_id, amount, payment_method, payment_id, transaction_id, status)
+      VALUES ($1, $2, $3, 'Razorpay', $4, $5, 'successful')
+    `;
+    // We map razorpay_order_id to payment_id and razorpay_payment_id to transaction_id to match your Admin UI!
+    const paymentValues = [newBookingId, user_id, total_price, razorpay_order_id, razorpay_payment_id];
+    
+    await client.query(paymentQuery, paymentValues);
+
+    await client.query('COMMIT'); // Save everything!
+
+    // D. Send Confirmation Email (Non-blocking)
     try {
-      await client.query("BEGIN");
-
-      // Calculate the true total people based on Adults + Children
-      const adultCount = Number(adults) || 1;
-      const childCount = Number(children) || 0;
-      const totalPeople = adultCount + childCount;
-
-      // --- THE CAPACITY SECURITY CHECK ---
-      const capacityCheck = await client.query(`
-        SELECT p.max_capacity, COALESCE(SUM(b.people), 0) as currently_booked
-        FROM packages p
-        LEFT JOIN bookings b ON p.id = b.package_id AND b.travel_date = $1 AND b.status = 'confirmed'
-        WHERE p.id = $2
-        GROUP BY p.max_capacity
-      `, [travel_date, package_id]);
-
-      if (capacityCheck.rows.length > 0) {
-        const { max_capacity, currently_booked } = capacityCheck.rows[0];
-        const remainingSeats = max_capacity - Number(currently_booked);
-
-        if (totalPeople > remainingSeats) {
-          throw new Error(`Inventory Error: Only ${remainingSeats} seats remaining for this date.`);
-        }
+      const userQuery = await pool.query("SELECT username, email FROM users WHERE id = $1", [user_id]);
+      if (userQuery.rows.length > 0) {
+        sendBookingConfirmation(
+          userQuery.rows[0].email, 
+          userQuery.rows[0].username, 
+          {
+            title: pkgRes.rows[0].title,
+            date: travel_date,
+            people: people,
+            price: total_price,
+            transactionId: razorpay_payment_id
+          }
+        ).catch(err => console.error("Non-fatal email error:", err));
       }
-      // ------------------------------------
-
-      const pkgRes = await client.query(`
-        SELECT p.price, p.title,
-        CASE WHEN o.id IS NOT NULL THEN p.price - (p.price * (o.discount_percentage / 100)) ELSE p.price END AS final_price 
-        FROM packages p 
-        LEFT JOIN offers o ON p.id = o.package_id AND o.is_active = true AND CURRENT_DATE >= o.start_date AND CURRENT_DATE <= o.end_date 
-        WHERE p.id = $1`, [package_id]);
-
-      if (pkgRes.rows.length === 0) throw new Error("Package not found");
-
-      const price = Number(pkgRes.rows[0].final_price);
-      const pkgTitle = pkgRes.rows[0].title;
-      
-      // ✅ NEW: Children Pricing Logic (90% off for kids)
-      const adultTotal = price * adultCount;
-      const childTotal = (price * 0.9) * childCount;
-      let total = adultTotal + childTotal;
-
-      const query = `
-        INSERT INTO bookings (
-          package_id, user_id, travel_date, people, adults, children, status, 
-          meal_preference, id_proof_url, price, total_price, transfer_option, arrival_point, arrival_time
-        ) 
-        VALUES ($1, $2, $3, $4, $5, $6, 'confirmed', $7, $8, $9, $10, $11, $12, $13) 
-        RETURNING *;
-      `;
-      
-      const bookingResult = await client.query(query, [
-        package_id, 
-        user_id, 
-        travel_date, 
-        totalPeople, 
-        adultCount,  
-        childCount,  
-        meal_preference || 'Any', 
-        id_proof_url || null,
-        price,
-        total,
-        transfer_option || 'none',
-        arrival_point || null,
-        arrival_time || null
-      ]);
-
-      await client.query(
-        "INSERT INTO payments (booking_id, user_id, amount, payment_method, payment_id, transaction_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-        [bookingResult.rows[0].id, user_id, total, 'Razorpay', razorpay_payment_id, razorpay_order_id, 'successful']
-      );
-
-      await client.query("COMMIT");
-
-      try {
-        const userQuery = await pool.query("SELECT username, email FROM users WHERE id = $1", [user_id]);
-        if (userQuery.rows.length > 0) {
-          const userData = userQuery.rows[0];
-          const bookingData = bookingResult.rows[0];
-
-          sendBookingConfirmation(
-            userData.email, 
-            userData.username, 
-            {
-              title: pkgTitle,
-              date: bookingData.travel_date,
-              people: bookingData.people,
-              price: bookingData.total_price,
-              transactionId: razorpay_payment_id
-            }
-          ).catch(err => console.error("Non-fatal email error:", err));
-        }
-      } catch (emailTriggerError) {
-        console.error("Failed to trigger email system, but booking was saved:", emailTriggerError);
-      }
-
-      res.json({ success: true, message: "Payment verified & Booking confirmed! 🎉", booking: bookingResult.rows[0] });
-    } catch (err) {
-      await client.query("ROLLBACK");
-      throw err;
-    } finally {
-      client.release();
+    } catch (emailError) {
+      console.error("Email trigger failed, but booking saved:", emailError);
     }
-  } catch (err) {
-    console.error("Payment verify error:", err);
-    res.status(500).json({ success: false, error: err.message || "Failed to save booking" });
+
+    res.status(200).json({ success: true, message: "Payment verified and booking confirmed!" });
+
+  } catch (error) {
+    await client.query('ROLLBACK'); // Undo everything if an error occurs
+    console.error("Transaction failed, rolled back:", error);
+    res.status(500).json({ success: false, error: "Database error during booking confirmation." });
+    
+  } finally {
+    client.release(); // Free up the connection
   }
 });
 
@@ -801,10 +802,13 @@ app.post("/api/book", async (req, res) => {
 app.get("/api/bookings/user/:userId", async (req, res) => {
   try {
     const query = `
-      SELECT b.*, p.title, p.image, p.duration_days, pay.payment_id, pay.transaction_id
+      SELECT b.*, p.title, p.image, p.duration_days, pay.payment_id, pay.transaction_id,
+             a.agent_name, a.role, a.contact_no
       FROM bookings b 
       JOIN packages p ON b.package_id = p.id 
       LEFT JOIN payments pay ON b.id = pay.booking_id
+      LEFT JOIN booking_assignments ba ON b.id = ba.booking_id
+      LEFT JOIN agents a ON ba.agent_id = a.agent_id
       WHERE b.user_id = $1 
       ORDER BY b.booking_date DESC
     `;
@@ -826,10 +830,15 @@ app.get("/api/bookings/:userId", async (req, res) => {
           pkg.title, 
           pkg.image, 
           pay.payment_id, 
-          pay.transaction_id
+          pay.transaction_id,
+          a.agent_name, 
+          a.role, 
+          a.contact_no
        FROM bookings b
        JOIN packages pkg ON b.package_id = pkg.id 
        LEFT JOIN payments pay ON b.id = pay.booking_id
+       LEFT JOIN booking_assignments ba ON b.id = ba.booking_id
+       LEFT JOIN agents a ON ba.agent_id = a.agent_id
        WHERE b.user_id = $1 
        ORDER BY b.id DESC`,
       [userId]
@@ -1014,11 +1023,14 @@ app.get("/api/admin/stats", async (req, res) => {
 app.get("/api/admin/bookings", async (req, res) => {
   try {
     const query = `
-      SELECT b.*, p.title, p.image, u.username, u.email, pay.payment_id, pay.transaction_id
+      SELECT b.*, p.title, p.image, u.username, u.email, pay.payment_id, pay.transaction_id,
+             a.agent_name, a.role, a.contact_no
       FROM bookings b 
       JOIN packages p ON b.package_id = p.id 
       LEFT JOIN users u ON b.user_id = u.id 
       LEFT JOIN payments pay ON b.id = pay.booking_id
+      LEFT JOIN booking_assignments ba ON b.id = ba.booking_id
+      LEFT JOIN agents a ON ba.agent_id = a.agent_id
       ORDER BY b.booking_date DESC
     `;
     const result = await pool.query(query);
@@ -1121,6 +1133,44 @@ app.get("/api/admin/yearly-revenue", async (req, res) => {
   }
 });
 
+/* ================= NEW ANALYTICS ROUTES ================= */
+app.get('/api/analytics/revenue', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        TO_CHAR(DATE_TRUNC('month', travel_date), 'Mon YYYY') AS month,
+        SUM(total_price) AS revenue
+      FROM bookings
+      WHERE status = 'confirmed' 
+      GROUP BY DATE_TRUNC('month', travel_date)
+      ORDER BY DATE_TRUNC('month', travel_date) ASC;
+    `);
+    
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error("Revenue Analytics Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/analytics/volume', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        TO_CHAR(DATE_TRUNC('month', travel_date), 'Mon YYYY') AS month,
+        COUNT(id) AS volume
+      FROM bookings
+      GROUP BY DATE_TRUNC('month', travel_date)
+      ORDER BY DATE_TRUNC('month', travel_date) ASC;
+    `);
+    
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error("Volume Analytics Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 /* ================= ADMIN USER ROUTES ================= */
 app.get("/api/admin/users", async (req, res) => {
@@ -1209,6 +1259,38 @@ app.put("/api/admin/complaints/:id/resolve", async (req, res) => {
     res.json({ message: "Complaint resolved ✅" });
   } catch (err) { 
     res.status(500).json({ error: "Server error" }); 
+  }
+});
+
+/* ================= AGENT MANAGEMENT ================= */
+// POST route to assign an agent to a booking
+app.post('/api/assign-agent', async (req, res) => {
+  const { booking_id, agent_id } = req.body;
+
+  try {
+    // Insert the assignment into your new junction table
+    const result = await pool.query(
+      'INSERT INTO booking_assignments (booking_id, agent_id) VALUES ($1, $2) RETURNING *',
+      [booking_id, agent_id]
+    );
+    
+    res.status(201).json({ 
+      message: "Agent successfully assigned!", 
+      assignment: result.rows[0] 
+    });
+  } catch (err) {
+    console.error("Error assigning agent:", err);
+    res.status(500).json({ error: "Failed to assign agent to booking." });
+  }
+});
+
+// GET route to fetch all agents (so the Admin can see who is available)
+app.get('/api/agents', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT agent_id, agent_name, role FROM agents');
+    res.status(200).json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch agents." });
   }
 });
 

@@ -32,6 +32,7 @@ type Package = {
   description?: string;
   itinerary?: string[];
   is_international?: boolean;
+  hotel_images?: string[];
 };
 
 type Booking = {
@@ -80,11 +81,16 @@ type Complaint = {
 };
 
 type AnalyticsData = {
-  revenueTrend: { month: string; revenue: number }[];
   statusBreakdown: { name: string; value: number }[];
   topRevenuePackages: { name: string; revenue: number }[];
-  bookingsVolume: { month: string; count: number }[];
   tripType: { name: string; value: number }[];
+};
+
+// ✅ NEW: Agent Type
+type Agent = {
+  agent_id: number;
+  agent_name: string;
+  role: string;
 };
 
 // --- Helpers ---
@@ -116,19 +122,23 @@ function AdminContent() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]); 
   const [activeTab, setActiveTab] = useState("analytics"); 
 
   // Advanced Analytics State
   const [analytics, setAnalytics] = useState<AnalyticsData>({
-    revenueTrend: [],
     statusBreakdown: [],
     topRevenuePackages: [],
-    bookingsVolume: [], 
     tripType: []
   });
 
-  // ✅ NEW: Year-wise Revenue State (Feature #5)
+  // Comprehensive Chart States
   const [yearlyRevenue, setYearlyRevenue] = useState<{ year: string; revenue: number }[]>([]);
+  const [revenueData, setRevenueData] = useState<{ month: string; revenue: number }[]>([]);
+  const [volumeData, setVolumeData] = useState<{ month: string; volume: number }[]>([]);
+
+  // Agent Assignment State (Map of booking ID to selected agent ID)
+  const [selectedAgents, setSelectedAgents] = useState<Record<number, string>>({});
 
   // Modals
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
@@ -154,6 +164,10 @@ function AdminContent() {
   const [dateInput, setDateInput] = useState("");
   const [itinerary, setItinerary] = useState<string[]>([]);
   const [isInternational, setIsInternational] = useState(false);
+  
+  // ✅ NEW: Add Package Hotel Images State
+  const [hotelImages, setHotelImages] = useState<string[]>([]);
+  const [isUploadingMultiple, setIsUploadingMultiple] = useState(false);
 
   // Edit Package Forms
   const [editTitle, setEditTitle] = useState("");
@@ -165,6 +179,10 @@ function AdminContent() {
   const [editDateInput, setEditDateInput] = useState("");
   const [editItinerary, setEditItinerary] = useState<string[]>([]);
   const [editIsInternational, setEditIsInternational] = useState(false);
+  
+  // ✅ NEW: Edit Package Hotel Images State
+  const [editHotelImages, setEditHotelImages] = useState<string[]>([]);
+  const [isUploadingEditMultiple, setIsUploadingEditMultiple] = useState(false);
 
   // Offer Forms
   const [selectedPkgId, setSelectedPkgId] = useState("");
@@ -190,8 +208,10 @@ function AdminContent() {
 
   const fetchData = async () => {
     try {
-      // ✅ Added the Yearly Revenue fetch call
-      const [pkgs, bks, offs, usrs, comps, stts, analyticsData, yearlyRevData] = await Promise.all([
+      const [
+        pkgs, bks, offs, usrs, comps, stts, analyticsData, yearlyRevData, fetchedAgents,
+        fetchedRevenueData, fetchedVolumeData
+      ] = await Promise.all([
         fetch(`${API_BASE_URL}/api/packages`).then(r => r.json()),
         fetch(`${API_BASE_URL}/api/admin/bookings`).then(r => r.json()),
         fetch(`${API_BASE_URL}/api/offers`).then(r => r.json()),
@@ -199,7 +219,10 @@ function AdminContent() {
         fetch(`${API_BASE_URL}/api/admin/complaints`).then(r => r.json()),
         fetch(`${API_BASE_URL}/api/admin/stats`).then(r => r.json()),
         fetch(`${API_BASE_URL}/api/admin/advanced-analytics`).then(r => r.json()),
-        fetch(`${API_BASE_URL}/api/admin/yearly-revenue`).then(r => r.json()).catch(() => []) 
+        fetch(`${API_BASE_URL}/api/admin/yearly-revenue`).then(r => r.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/api/agents`).then(r => r.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/api/analytics/revenue`).then(r => r.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/api/analytics/volume`).then(r => r.json()).catch(() => [])
       ]);
 
       setPackages(pkgs);
@@ -213,6 +236,15 @@ function AdminContent() {
       if (Array.isArray(yearlyRevData)) {
         setYearlyRevenue(yearlyRevData.map((item: any) => ({ year: item.year, revenue: Number(item.revenue) })));
       }
+      if (Array.isArray(fetchedAgents)) {
+        setAgents(fetchedAgents);
+      }
+      if (Array.isArray(fetchedRevenueData)) {
+        setRevenueData(fetchedRevenueData.map((item: any) => ({ month: item.month, revenue: Number(item.revenue) })));
+      }
+      if (Array.isArray(fetchedVolumeData)) {
+        setVolumeData(fetchedVolumeData.map((item: any) => ({ month: item.month, volume: Number(item.volume) })));
+      }
 
     } catch (err) {
       console.error("Data fetch error", err);
@@ -222,6 +254,31 @@ function AdminContent() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const handleAssignAgent = async (bookingId: number) => {
+    const selectedAgentId = selectedAgents[bookingId];
+    if (!selectedAgentId) return toast.error("Please select an agent first!");
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/assign-agent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          booking_id: bookingId, 
+          agent_id: parseInt(selectedAgentId) 
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Agent assigned successfully!");
+      } else {
+        toast.error("Failed to assign agent.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Network error. Could not assign agent.");
+    }
+  };
 
   const openEdit = (pkg: Package) => {
     setSelectedPackage(pkg);
@@ -233,6 +290,7 @@ function AdminContent() {
     setEditDepartureDates(pkg.departure_dates || []);
     setEditItinerary(pkg.itinerary || []);
     setEditIsInternational(pkg.is_international || false);
+    setEditHotelImages(pkg.hotel_images || []); // Set existing images
     setIsEditModalOpen(true);
   };
 
@@ -284,6 +342,83 @@ function AdminContent() {
     else setDepartureDates(departureDates.filter((d) => d !== dateToRemove));
   };
 
+  // ✅ NEW: Handle Multiple Image Upload for Add Package
+  const handleMultipleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (files.length > 5) {
+      toast.error("Maximum 5 hotel images allowed.");
+      return;
+    }
+
+    setIsUploadingMultiple(true);
+    const formData = new FormData();
+    
+    for (let i = 0; i < files.length; i++) {
+      formData.append("images", files[i]);
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/upload-multiple`, {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await res.json();
+      
+      if (data.urls) {
+        setHotelImages(data.urls); 
+        toast.success("Hotel gallery uploaded successfully! 📸");
+      } else {
+        toast.error(data.error || "Upload failed");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Network error during gallery upload.");
+    } finally {
+      setIsUploadingMultiple(false);
+    }
+  };
+
+  // ✅ NEW: Handle Multiple Image Upload for Edit Package
+  const handleMultipleEditImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (files.length > 5) {
+      toast.error("Maximum 5 hotel images allowed.");
+      return;
+    }
+
+    setIsUploadingEditMultiple(true);
+    const formData = new FormData();
+    
+    for (let i = 0; i < files.length; i++) {
+      formData.append("images", files[i]);
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/upload-multiple`, {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await res.json();
+      
+      if (data.urls) {
+        setEditHotelImages(data.urls); 
+        toast.success("Hotel gallery updated successfully! 📸");
+      } else {
+        toast.error(data.error || "Upload failed");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Network error during gallery upload.");
+    } finally {
+      setIsUploadingEditMultiple(false);
+    }
+  };
 
   const handleAddPackage = async () => {
     if (!title || !price || !image || departureDates.length === 0) return toast.error("Fill all fields and add at least one date.");
@@ -299,7 +434,8 @@ function AdminContent() {
           duration_days: durationDays,
           description: description,
           itinerary: itinerary,
-          is_international: isInternational
+          is_international: isInternational,
+          hotel_images: hotelImages // 🔥 Added hotel_images payload
         }),
       });
       if (res.ok) {
@@ -307,6 +443,7 @@ function AdminContent() {
         fetchData();
         setTitle(""); setPrice(""); setImage(""); setDepartureDates([]);
         setDurationDays(""); setDescription(""); setItinerary([]); setIsInternational(false);
+        setHotelImages([]); // Reset gallery
       }
     } catch (err) { toast.error("Failed to add package"); }
   };
@@ -325,7 +462,8 @@ function AdminContent() {
           duration_days: editDurationDays,
           description: editDescription,
           itinerary: editItinerary,
-          is_international: editIsInternational
+          is_international: editIsInternational,
+          hotel_images: editHotelImages // 🔥 Added hotel_images payload
         }),
       });
       if (res.ok) {
@@ -406,26 +544,40 @@ function AdminContent() {
   const cancelBooking = (booking: Booking) => {
     const travelDate = new Date(booking.travel_date);
     const today = new Date();
-    const hoursDiff = (travelDate.getTime() - today.getTime()) / (1000 * 60 * 60);
+    const daysDiff = (travelDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
 
     let warningMessage = "";
     let color = "";
+    let refundAmount = 0;
 
-    if (hoursDiff >= 48) {
-      warningMessage = `This trip is more than 48 hours away. The customer is eligible for a FULL REFUND of ₹${booking.total_price.toLocaleString()}.`;
-      color = "#16a34a"; // Green
-    } else if (hoursDiff > 0) {
-      warningMessage = `⚠️ WARNING: This trip is only ${Math.round(hoursDiff)} hours away. According to policy, NO REFUND will be issued.`;
-      color = "#ea580c"; // Orange
-    } else {
+    if (daysDiff >= 30) {
+      refundAmount = booking.total_price; 
+      warningMessage = `This trip is ${Math.round(daysDiff)} days away. The customer gets a FULL (100%) REFUND of ₹${refundAmount.toLocaleString()}.`;
+      color = "#16a34a"; 
+    } 
+    else if (daysDiff >= 15 && daysDiff < 30) {
+      refundAmount = booking.total_price * 0.50; 
+      warningMessage = `This trip is ${Math.round(daysDiff)} days away. The customer gets a 50% REFUND of ₹${refundAmount.toLocaleString()}.`;
+      color = "#eab308"; 
+    } 
+    else if (daysDiff >= 7 && daysDiff < 15) {
+      refundAmount = booking.total_price * 0.25; 
+      warningMessage = `This trip is ${Math.round(daysDiff)} days away. The customer gets a 25% REFUND of ₹${refundAmount.toLocaleString()}.`;
+      color = "#f97316"; 
+    } 
+    else if (daysDiff > 0 && daysDiff < 7) {
+      warningMessage = `⚠️ WARNING: This trip is only ${Math.round(daysDiff)} days away. According to policy, NO REFUND will be issued.`;
+      color = "#ef4444"; 
+    } 
+    else {
       warningMessage = `⚠️ This trip has already started or passed. Cancellation will result in NO REFUND.`;
-      color = "#ef4444"; // Red
+      color = "#991b1b"; 
     }
 
     setActionData({
       id: booking.id,
       type: 'cancel_booking',
-      title: 'Cancel Booking?',
+      title: 'Cancel Booking & Process Refund?',
       message: warningMessage,
       buttonText: 'Confirm Cancellation',
       buttonColor: color
@@ -591,7 +743,7 @@ function AdminContent() {
               📈 Monthly Revenue Trend
             </h3>
             <ResponsiveContainer width="100%" height={320}>
-              <AreaChart data={analytics.revenueTrend} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <AreaChart data={revenueData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#2563eb" stopOpacity={0.4}/>
@@ -607,7 +759,7 @@ function AdminContent() {
             </ResponsiveContainer>
           </div>
 
-          {/* ✅ ROW 1.5: YEARLY REVENUE (Feature #5) */}
+          {/* YEARLY REVENUE */}
           <div style={{ background: "white", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
             <h3 style={{ marginBottom: "20px", color: "#0f172a", fontSize: "18px" }}>📆 Year-wise Booking Revenue</h3>
             <ResponsiveContainer width="100%" height={300}>
@@ -627,12 +779,12 @@ function AdminContent() {
             <div style={{ background: "white", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
               <h3 style={{ marginBottom: "20px", color: "#0f172a", fontSize: "16px" }}>📊 Monthly Bookings Volume</h3>
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={analytics.bookingsVolume} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={volumeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="month" stroke="#64748b" tick={{fill: '#64748b', fontSize: 12}} axisLine={false} tickLine={false} dy={10} />
                   <YAxis stroke="#64748b" tick={{fill: '#64748b', fontSize: 12}} axisLine={false} tickLine={false} />
                   <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }} />
-                  <Bar dataKey="count" fill="#38bdf8" radius={[6, 6, 0, 0]} barSize={35} />
+                  <Bar dataKey="volume" fill="#38bdf8" radius={[6, 6, 0, 0]} barSize={35} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -750,6 +902,47 @@ function AdminContent() {
                 ))}
               </div>
             </div>
+
+            {/* ✅ NEW: Hotel Gallery Upload Section for Add Package */}
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: "#1e293b", fontSize: "14px" }}>
+                Hotel Gallery (Select up to 5 images)
+              </label>
+              
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleMultipleImageUpload}
+                disabled={isUploadingMultiple}
+                style={{ 
+                  width: "100%", 
+                  padding: "10px", 
+                  border: "1px solid #cbd5e1", 
+                  borderRadius: "8px", 
+                  background: "#f8fafc",
+                  cursor: isUploadingMultiple ? "not-allowed" : "pointer"
+                }}
+              />
+
+              {isUploadingMultiple && <p style={{ color: "#2563eb", fontSize: "13px", marginTop: "5px" }}>Uploading gallery... ⏳</p>}
+
+              {/* Display a preview of the uploaded thumbnails */}
+              {hotelImages.length > 0 && (
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>
+                  {hotelImages.map((url, index) => (
+                    <div key={index} style={{ position: "relative" }}>
+                      <img 
+                        src={url.startsWith('/') ? `${API_BASE_URL}${url}` : url} 
+                        alt={`Upload preview ${index + 1}`} 
+                        style={{ width: "60px", height: "60px", objectFit: "cover", borderRadius: "8px", border: "2px solid #e2e8f0" }} 
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <button onClick={handleAddPackage} style={{ padding: "12px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }}>Add New Package</button>
           </div>
 
@@ -832,6 +1025,46 @@ function AdminContent() {
                   </span>
                 ))}
               </div>
+            </div>
+
+            {/* ✅ NEW: Hotel Gallery Upload Section for Edit Package */}
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: "#1e293b", fontSize: "14px" }}>
+                Update Hotel Gallery (Select up to 5 images)
+              </label>
+              
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleMultipleEditImageUpload}
+                disabled={isUploadingEditMultiple}
+                style={{ 
+                  width: "100%", 
+                  padding: "10px", 
+                  border: "1px solid #cbd5e1", 
+                  borderRadius: "8px", 
+                  background: "#f8fafc",
+                  cursor: isUploadingEditMultiple ? "not-allowed" : "pointer"
+                }}
+              />
+
+              {isUploadingEditMultiple && <p style={{ color: "#2563eb", fontSize: "13px", marginTop: "5px" }}>Uploading new gallery... ⏳</p>}
+
+              {/* Display a preview of the newly uploaded or existing thumbnails */}
+              {editHotelImages.length > 0 && (
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>
+                  {editHotelImages.map((url, index) => (
+                    <div key={index} style={{ position: "relative" }}>
+                      <img 
+                        src={url.startsWith('/') ? `${API_BASE_URL}${url}` : url} 
+                        alt={`Upload preview ${index + 1}`} 
+                        style={{ width: "60px", height: "60px", objectFit: "cover", borderRadius: "8px", border: "2px solid #e2e8f0" }} 
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -946,6 +1179,7 @@ function AdminContent() {
         </div>
       )}
 
+      {/* ✅ UPDATED: Bookings Tab with Agent Assignment */}
       {activeTab === "bookings" && (
         <div className="chart-box">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -962,6 +1196,7 @@ function AdminContent() {
                 <th style={{ padding: "15px" }}>ID Proof</th>
                 <th style={{ padding: "15px" }}>Amount</th>
                 <th style={{ padding: "15px" }}>Status</th>
+                <th style={{ padding: "15px" }}>Assign Agent</th>
                 <th style={{ padding: "15px" }}>Action</th>
               </tr>
             </thead>
@@ -989,6 +1224,35 @@ function AdminContent() {
                     </td>
                     <td style={{ padding: "15px", color: "#16a34a", fontWeight: "bold" }}>₹{Number(b.total_price).toLocaleString()}</td>
                     <td>{b.status === "confirmed" ? "✅" : "❌"}</td>
+                    
+                    {/* ✅ Agent Assignment Column */}
+                    <td style={{ padding: "10px" }}>
+                      {b.status === "confirmed" ? (
+                        <div style={{ display: "flex", gap: "8px", flexDirection: "column" }}>
+                          <select 
+                            value={selectedAgents[b.id] || ""}
+                            onChange={(e) => setSelectedAgents({ ...selectedAgents, [b.id]: e.target.value })}
+                            style={{ padding: "6px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "12px" }}
+                          >
+                            <option value="" disabled>Select Agent...</option>
+                            {agents.map((agent) => (
+                              <option key={agent.agent_id} value={agent.agent_id}>
+                                {agent.agent_name} ({agent.role})
+                              </option>
+                            ))}
+                          </select>
+                          <button 
+                            onClick={() => handleAssignAgent(b.id)}
+                            style={{ padding: "6px", background: "#3b82f6", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}
+                          >
+                            Assign Agent
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ color: "#94a3b8", fontSize: "12px" }}>N/A</span>
+                      )}
+                    </td>
+
                     <td>
                       {b.status !== "cancelled" && (
                         <button

@@ -35,7 +35,7 @@ export default function BookingPage() {
   const [mealPreference, setMealPreference] = useState("Veg");
 
   // Transfer State
-  const [transferOption, setTransferOption] = useState("none"); // "none", "arrival", "round_trip"
+  const [transferOption, setTransferOption] = useState("none");
   const [arrivalPoint, setArrivalPoint] = useState("");
   const [arrivalTime, setArrivalTime] = useState("");
 
@@ -49,6 +49,8 @@ export default function BookingPage() {
 
   const [showPayment, setShowPayment] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const isInternational = pkg?.is_international || false;
 
@@ -123,7 +125,6 @@ export default function BookingPage() {
   const vehicleCost = selectedVehicle ? selectedVehicle.price_per_day : 0;
   const totalPrice = baseCost + vehicleCost;
 
-  // Integrated file upload logic handling both state and API server upload
   const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
@@ -178,7 +179,7 @@ export default function BookingPage() {
       toast.error("Please select a travel date and at least 1 person.");
       return;
     }
-    
+
     if (!user || !user.id) {
       toast.error("Session expired. Please log in again.");
       router.push("/login");
@@ -264,7 +265,7 @@ export default function BookingPage() {
           }
         },
 
-       prefill: {
+        prefill: {
           name: user?.username ? user.username : "Test User",
           email: user?.email ? user.email : "test@example.com",
           contact: user?.phone ? user.phone : "9876543210",
@@ -300,7 +301,7 @@ export default function BookingPage() {
   );
 
   return (
-    <main className="booking-container" style={{ background: "#f8fafc", minHeight: "100vh", padding: "60px 20px"}}>
+    <main className="booking-container" style={{ background: "#f8fafc", minHeight: "100vh", padding: "60px 20px" }}>
       <Toaster position="top-center" />
       <style>{`
         @keyframes pulse {
@@ -317,9 +318,7 @@ export default function BookingPage() {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: "40px", alignItems: "start" }}>
 
-          {/* =========================================================
-              LEFT SIDE: TRIP SUMMARY
-              ========================================================= */}
+          {/* LEFT SIDE: TRIP SUMMARY */}
           <div style={{ background: "white", borderRadius: "24px", overflow: "hidden", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #e2e8f0", position: "sticky", top: "40px" }}>
             <img src={pkg.image} alt={pkg.title} style={{ width: "100%", height: "250px", objectFit: "cover" }} />
             <div style={{ padding: "30px" }}>
@@ -360,9 +359,7 @@ export default function BookingPage() {
             </div>
           </div>
 
-          {/* =========================================================
-              RIGHT SIDE: BOOKING FORM
-              ========================================================= */}
+          {/* RIGHT SIDE: BOOKING FORM */}
           <div style={{ background: "white", padding: "40px", borderRadius: "24px", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #e2e8f0" }}>
             <h1 style={{ margin: "0 0 10px 0", fontSize: "32px", color: "#0f172a", fontWeight: "800", letterSpacing: "-1px" }}>Complete Booking</h1>
             <p style={{ color: "#64748b", marginBottom: "40px", fontSize: "15px" }}>Booking for <strong>{user.username || "Guest"}</strong> ({user.email || "No email provided"}).</p>
@@ -390,7 +387,6 @@ export default function BookingPage() {
                       ))}
                     </select>
 
-                    {/* SEAT AVAILABILITY BADGE */}
                     {date && seatsLeft !== null && (
                       <div style={{ marginTop: "12px", padding: "12px 16px", borderRadius: "12px", backgroundColor: seatsLeft < totalPeople ? "#fef2f2" : seatsLeft <= 15 ? "#fffbeb" : "#f0fdf4", border: `1px solid ${seatsLeft < totalPeople ? "#fca5a5" : seatsLeft <= 15 ? "#fcd34d" : "#bbf7d0"}` }}>
                         {seatsLeft === 0 ? (
@@ -445,9 +441,7 @@ export default function BookingPage() {
                 </select>
               </div>
 
-              {/* =========================================================
-                  1. LAST-MILE TRANSFERS
-                  ========================================================= */}
+              {/* LAST-MILE TRANSFERS */}
               <div className="booking-section">
                 <h3 className="section-title" style={{ display: "block", marginBottom: "15px", fontWeight: "700", color: "#1e293b", fontSize: "16px" }}>Last-Mile Transfers (Optional)</h3>
 
@@ -480,7 +474,6 @@ export default function BookingPage() {
                   </div>
                 </div>
 
-                {/* SMART CONDITIONAL RENDERING */}
                 {transferOption !== "none" && (
                   <div className="transfer-details-container" style={{ marginTop: "20px", padding: "20px", background: "#f1f5f9", borderRadius: "12px" }}>
                     <p className="transfer-reminder" style={{ fontSize: "14px", color: "#475569", marginBottom: "15px" }}>
@@ -516,17 +509,15 @@ export default function BookingPage() {
                 )}
               </div>
 
-              {/* =========================================================
-                  2. PASSPORT UPLOAD (Restricted format)
-                  ========================================================= */}
+              {/* PASSPORT / ID UPLOAD */}
               <div className="booking-section">
                 <h3 className="section-title" style={{ display: "block", marginBottom: "15px", fontWeight: "700", color: "#1e293b", fontSize: "16px" }}>
                   {isInternational ? "Passport Copy (Required for Visa/Travel) *" : "Govt. ID Proof (Required for Hotel Check-in) *"}
                 </h3>
-                
+
                 <div className="file-upload-container">
                   <div className="upload-box" style={{ border: idProof ? "2px solid #10b981" : "2px dashed #cbd5e1", padding: "24px", borderRadius: "12px", textAlign: "center", background: idProof ? "#ecfdf5" : "#f8fafc", position: "relative" }}>
-                    
+
                     {idProof ? (
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -543,8 +534,7 @@ export default function BookingPage() {
                       <>
                         <span className="upload-icon" style={{ fontSize: "32px", display: "block", marginBottom: "10px" }}>{isInternational ? "🛂" : "🪪"}</span>
                         <p style={{ margin: "0 0 15px 0", fontSize: "15px", color: "#475569", fontWeight: "600" }}>Click or drag to upload {isInternational ? "Passport" : "ID Proof"}</p>
-                        
-                        {/* 🔥 RESTRICTED FILE UPLOAD */}
+
                         <input
                           type="file"
                           accept=".jpg, .jpeg, .pdf, .png"
@@ -554,7 +544,7 @@ export default function BookingPage() {
                           disabled={showPayment || isUploading}
                           style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0, cursor: (showPayment || isUploading) ? "not-allowed" : "pointer" }}
                         />
-                        
+
                         <label htmlFor="passport-upload" className="btn-browse" style={{ padding: "10px 20px", background: "white", color: "#334155", border: "1px solid #cbd5e1", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", display: "inline-block", pointerEvents: "none", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
                           Browse Files
                         </label>
@@ -569,28 +559,46 @@ export default function BookingPage() {
 
               <hr style={{ border: "none", borderTop: "1px solid #e2e8f0", margin: "10px 0" }} />
 
+              {/* ✅ AGREEMENT CHECKBOX — shown before Proceed button */}
+              {!showPayment && (
+                <div style={{ padding: "15px", backgroundColor: "#fffbeb", border: "1px solid #fcd34d", borderRadius: "8px" }}>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      style={{ width: "18px", height: "18px", marginTop: "2px", cursor: "pointer" }}
+                    />
+                    <span style={{ fontSize: "14px", color: "#92400e", lineHeight: "1.5" }}>
+                      I have read and agree to the <strong>Cancellation Policy</strong> (100% refund at 30+ days, 50% at 15-29 days, 25% at 7-14 days, 0% within 7 days) and the full <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb", textDecoration: "underline" }}>Terms & Conditions</a>.
+                    </span>
+                  </label>
+                </div>
+              )}
+
               {/* ACTION BUTTONS */}
               {!showPayment ? (
                 <button
                   onClick={handleProceed}
                   className="btn-proceed"
-                  disabled={availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)}
+                  disabled={availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople) || !agreedToTerms}
                   style={{
                     padding: "20px",
-                    background: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)) ? "#94a3b8" : "#0f172a",
+                    background: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople) || !agreedToTerms) ? "#94a3b8" : "#0f172a",
                     color: "white",
                     border: "none",
                     borderRadius: "14px",
                     fontSize: "18px",
                     fontWeight: "800",
-                    cursor: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)) ? "not-allowed" : "pointer",
+                    cursor: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople) || !agreedToTerms) ? "not-allowed" : "pointer",
                     transition: "all 0.3s ease",
-                    boxShadow: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople)) ? "none" : "0 10px 20px -5px rgba(15, 23, 42, 0.4)",
+                    boxShadow: (availableDates.length === 0 || (seatsLeft !== null && seatsLeft < totalPeople) || !agreedToTerms) ? "none" : "0 10px 20px -5px rgba(15, 23, 42, 0.4)",
                     width: "100%"
                   }}
                 >
                   {availableDates.length === 0 ? "Unavailable 🚫" :
                    (seatsLeft !== null && seatsLeft < totalPeople) ? "Not enough seats 🚫" :
+                   !agreedToTerms ? "Please Accept Terms to Continue" :
                    "Proceed to Secure Payment →"}
                 </button>
               ) : (
@@ -600,13 +608,25 @@ export default function BookingPage() {
                   <button
                     onClick={handlePayment}
                     disabled={loading}
-                    style={{ width: "100%", padding: "20px", background: loading ? "#94a3b8" : "#16a34a", color: "white", border: "none", borderRadius: "12px", fontSize: "18px", fontWeight: "900", cursor: loading ? "not-allowed" : "pointer", boxShadow: loading ? "none" : "0 10px 20px -5px rgba(22, 163, 74, 0.4)" }}
+                    style={{
+                      width: "100%",
+                      padding: "20px",
+                      background: loading ? "#94a3b8" : "#16a34a",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "12px",
+                      fontSize: "18px",
+                      fontWeight: "900",
+                      cursor: loading ? "not-allowed" : "pointer",
+                      boxShadow: loading ? "none" : "0 10px 20px -5px rgba(22, 163, 74, 0.4)",
+                      transition: "all 0.3s ease"
+                    }}
                   >
                     {loading ? "Initializing Secure Gateway..." : "Pay Now with Razorpay 💳"}
                   </button>
 
                   {!loading && (
-                    <button onClick={() => setShowPayment(false)} style={{ background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', marginTop: '15px', cursor: 'pointer', fontWeight: "bold" }}>
+                    <button onClick={() => setShowPayment(false)} style={{ background: 'none', border: 'none', color: '#b45309', textDecoration: 'underline', marginTop: '15px', cursor: 'pointer', fontWeight: "bold" }}>
                       ← Wait, go back and edit details
                     </button>
                   )}

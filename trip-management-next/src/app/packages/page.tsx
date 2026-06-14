@@ -307,9 +307,7 @@ function PackagesContent() {
               <div style={{ padding: '25px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                   <h2 style={{ fontSize: '24px', color: '#1e293b', margin: 0, fontWeight: "800" }}>{selectedPackage.title}</h2>
-                  <span style={{ fontSize: '12px', background: '#f1f5f9', color: '#64748b', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold' }}>
-                    ID: #{selectedPackage.id}
-                  </span>
+                  
                 </div>
 
                 {selectedPackage.duration_days && (

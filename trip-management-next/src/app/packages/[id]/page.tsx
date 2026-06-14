@@ -79,8 +79,48 @@ export default function PackageDetailsPage() {
   if (loading) return <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", fontSize: "18px", color: "#64748b" }}>Preparing your itinerary...</div>;
   if (!pkg) return <div style={{ textAlign: "center", marginTop: "50px", fontSize: "20px", color: "#64748b" }}>Package not found.</div>;
 
-  const hotelImages = pkg.hotel_images || [];
-  const allImages = [pkg.image, ...hotelImages].filter(Boolean);
+  // --- DYNAMIC LOCAL IMAGE DICTIONARY ---
+  // Maps the package title to the exact local images you downloaded
+  const getDestinationImages = (title: string) => {
+    const t = title.toLowerCase();
+    
+    if (t.includes("andaman")) return ["/images/andaman-hotel-1.jpg", "/images/andaman-hotel-2.jpg", "/images/andaman-hotel-3.jpg"];
+    if (t.includes("bali")) return ["/images/bali-hotel-1.jpg", "/images/bali-hotel-2.jpg", "/images/bali-hotel-3.jpg"];
+    if (t.includes("barcelona") || t.includes("spain")) return ["/images/barcelona-hotel-1.jpg", "/images/barcelona-hotel-2.jpg", "/images/barcelona-hotel-3.jpg"];
+    if (t.includes("dubai")) return ["/images/dubai-hotel-1.jpg", "/images/dubai-hotel-2.jpg", "/images/dubai-hotel-3.jpg"];
+    if (t.includes("goa") || t.includes("beach")) return ["/images/goa-hotel-1.jpg", "/images/goa-hotel-3.jpg", "/images/goa-hotel-4.jpg"];
+    if (t.includes("kashmir")) return ["/images/kashmir-hotel-1.jpg", "/images/kashmir-hotel-2.jpg", "/images/kashmir-hotel-3.jpg"];
+    if (t.includes("kerala") || t.includes("munnar")) return ["/images/kerala-hotel-1.jpg", "/images/kerala-hotel-2.jpg", "/images/kerala-hotel-3.jpg"];
+    if (t.includes("kyoto") || t.includes("japan")) return ["/images/kyoto-hotel-1.jpg", "/images/kyoto-hotel-2.jpg", "/images/kyoto-hotel-3.jpg"];
+    if (t.includes("leh") || t.includes("ladakh")) return ["/images/leh-hotel-1.jpg", "/images/leh-hotel-2.jpg", "/images/leh-hotel-3.jpg"];
+    if (t.includes("maldives")) return ["/images/maldives-hotel-1.jpg", "/images/maldives-hotel-2.jpg", "/images/maldives-hotel-3.jpg"];
+    if (t.includes("manali") || t.includes("mountain")) return ["/images/manali-hotel-1.jpg", "/images/manali-hotel-2.jpg", "/images/manali-hotel-3.jpg"];
+    if (t.includes("meghalaya")) return ["/images/meghalaya-hotel-1.jpg", "/images/meghalaya-hotel-2.jpg", "/images/meghalaya-hotel-3.jpg"];
+    if (t.includes("rajasthan") || t.includes("jaipur")) return ["/images/rajasthan-hotel-1.jpg", "/images/rajasthan-hotel-2.jpg", "/images/rajasthan-hotel-3.jpg"];
+    if (t.includes("sikkim")) return ["/images/sikkim-hotel-1.jpg", "/images/sikkim-hotel-2.jpg", "/images/sikkim-hotel-3.jpg"];
+    if (t.includes("swiss") || t.includes("switzerland") || t.includes("europe")) return ["/images/swiss-hotel-1.jpg", "/images/swiss-hotel-2.jpg", "/images/swiss-hotel-3.jpg"];
+
+    // Generic fallback if name doesn't match
+    return [
+      "/images/goa-hotel-1.jpg", 
+      "/images/kerala-hotel-1.jpg", 
+      "/images/manali-hotel-1.jpg"
+    ];
+  };
+
+  const defaultImages = getDestinationImages(pkg.title);
+
+  // 1. Check if the database has REAL images uploaded from the Admin panel
+  const dbImages = pkg.hotel_images || [];
+  const hasRealUploads = dbImages.some((img: string) => img.includes('uploads'));
+
+  // 2. If no real admin uploads exist yet, strictly force it to use your local folder images
+  const hotelImages = hasRealUploads ? dbImages : defaultImages;
+    
+  // Ensure the main image doesn't break
+  const mainImg = pkg.image || defaultImages[0];
+
+  const allImages = [mainImg, ...hotelImages].filter(Boolean);
   const currentPrice = pkg.discounted_price ? Number(pkg.discounted_price) : Number(pkg.price);
 
   return (
@@ -101,7 +141,7 @@ export default function PackageDetailsPage() {
               ========================================================= */}
           <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
             
-            {/* 🏨 MODERN BARCELONA IMAGE GALLERY */}
+            {/* 🏨 DYNAMIC LOCAL IMAGE GALLERY */}
             <div style={{ 
               background: "white", 
               borderRadius: "24px", 
@@ -115,7 +155,8 @@ export default function PackageDetailsPage() {
                   src={allImages[currentImgIndex]} 
                   alt="Package Scenery" 
                   style={{ width: "100%", height: "100%", objectFit: "cover", transition: "opacity 0.4s ease-in-out" }} 
-                  onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1539103372884-cc235bc2bad6?w=1000&q=80"; }}
+                  // ✅ Dynamic fallback using your local images
+                  onError={(e) => { (e.target as HTMLImageElement).src = defaultImages[0]; }} 
                 />
                 
                 <div style={{ position: "absolute", top: "50%", width: "100%", display: "flex", justifyContent: "space-between", padding: "0 15px", transform: "translateY(-50%)", pointerEvents: "none" }}>
@@ -132,7 +173,7 @@ export default function PackageDetailsPage() {
                 </div>
 
                 <div style={{ position: "absolute", top: "20px", right: "20px", background: "rgba(15, 23, 42, 0.8)", color: "white", padding: "8px 16px", borderRadius: "30px", fontSize: "13px", fontWeight: "600", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", gap: "6px" }}>
-                  🏛️ Architecture & Food
+                  🌟 Premium Experience
                 </div>
               </div>
 
@@ -158,7 +199,8 @@ export default function PackageDetailsPage() {
                       style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.3s ease" }}
                       onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
                       onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                      onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1539103372884-cc235bc2bad6?w=200&q=80"; }}
+                      // ✅ Simplified fallback so images never shuffle
+                      onError={(e) => { (e.target as HTMLImageElement).src = defaultImages[0]; }} 
                     />
                   </div>
                 ))}
@@ -222,7 +264,7 @@ export default function PackageDetailsPage() {
                 <div style={{ marginBottom: "50px" }}>
                   <h3 style={{ fontSize: "24px", color: "#0f172a", fontWeight: "900", marginBottom: "16px" }}>About this journey</h3>
                   <p style={{ fontSize: "16px", color: "#475569", lineHeight: "1.8", margin: 0 }}>
-                    {pkg.description || "Immerse yourself in the heart of Catalonia! Discover the genius of Gaudí at the Sagrada Familia, stroll through the vibrant Las Ramblas, and enjoy an evening of authentic tapas tasting in the Gothic Quarter. This tour perfectly blends breathtaking urban design with the rich culinary heritage of Spain."}
+                    {pkg.description || "Immerse yourself in the local culture and breathtaking sights. This meticulously planned itinerary perfectly blends awe-inspiring landscapes with the rich heritage and unforgettable culinary experiences of your destination."}
                   </p>
                 </div>
 

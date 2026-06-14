@@ -22,6 +22,10 @@ type Booking = {
   status: string;
   refund_amount?: number;
   refund_status?: string;
+  // ✅ NEW AGENT FIELDS
+  agent_name?: string;
+  role?: string;
+  contact_no?: string;
 };
 
 type Complaint = {
@@ -89,6 +93,10 @@ function DashboardContent() {
           total_price: Number(b.total_price) || 0,
           refund_amount: Number(b.refund_amount) || 0,
           refund_status: b.refund_status || "",
+          // ✅ Map Agent Details
+          agent_name: b.agent_name || null,
+          role: b.role || null,
+          contact_no: b.contact_no || null,
         })));
       }
       
@@ -284,9 +292,32 @@ function DashboardContent() {
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", gridColumn: "span 2" }}><span style={{ fontSize: "16px" }}>💰</span> <strong style={{ color: b.status.toLowerCase() === "cancelled" ? "#94a3b8" : "#16a34a", fontSize: "18px" }}>₹{b.total_price.toLocaleString()}</strong></div>
                     </div>
 
-                    <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "8px", fontSize: "12px", color: "#64748b", marginBottom: "20px", border: "1px dashed #cbd5e1" }}>
+                    <div style={{ background: "#f8fafc", padding: "12px", borderRadius: "8px", fontSize: "12px", color: "#64748b", marginBottom: "15px", border: "1px dashed #cbd5e1" }}>
                       <div style={{ marginBottom: "8px", wordBreak: "break-all" }}><strong>Payment ID:</strong> <br/>{b.payment_id || "N/A"}</div>
                       <div style={{ wordBreak: "break-all" }}><strong>Transaction ID:</strong> <br/>{b.transaction_id || "N/A"}</div>
+                    </div>
+
+                    {/* ✅ UPDATED: AGENT/TEAM SECTION USING PROVIDED CSS CLASSES */}
+                    <div className="booking-team-section">
+                      <h4 className="team-title">Your Trip Team</h4>
+                      
+                      {b.agent_name ? (
+                        <div className="team-member-info">
+                          <div className="team-icon">
+                            {b.role === "Driver" ? "🚕" : b.role === "Tour Guide" ? "🗺️" : "🏨"}
+                          </div>
+                          <div>
+                            <p className="team-name">
+                              {b.agent_name} <span>({b.role})</span>
+                            </p>
+                            <p className="team-contact">📞 {b.contact_no || "N/A"}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="team-pending">
+                          ⏳ Your team is currently being assigned. Check back soon!
+                        </p>
+                      )}
                     </div>
 
                     <div style={{ flexGrow: 1 }}></div>

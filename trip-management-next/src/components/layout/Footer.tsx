@@ -60,8 +60,15 @@ export default function Footer() {
 
       </div>
 
-      <div className="footer-bottom">
+      <div className="footer-bottom" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div>© {new Date().getFullYear()} TripManager. All rights reserved.</div>
+        
+        <div style={{ marginTop: "20px", display: "flex", gap: "15px", justifyContent: "center", fontSize: "14px", color: "#64748b" }}>
+          {/* 🔥 NEW TERMS LINK */}
+          <Link href="/terms" style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}>
+            Terms & Conditions
+          </Link>
+        </div>
       </div>
     </footer>
   );
