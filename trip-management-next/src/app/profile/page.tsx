@@ -149,9 +149,6 @@ export default function ProfilePage() {
             {initial}
           </div>
           <h2 style={{ fontSize: "24px", color: "#1e293b", margin: "0 0 5px 0" }}>{user.username}</h2>
-          <p style={{ color: "#64748b", fontSize: "14px", margin: "0 0 20px 0" }}>
-            Role: <span style={{ fontWeight: "bold", color: user.role === "admin" ? "#ef4444" : "#16a34a", textTransform: "capitalize" }}>{user.role || "User"}</span>
-          </p>
         </div>
 
         {/* TABS */}

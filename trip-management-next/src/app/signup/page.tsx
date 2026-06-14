@@ -196,20 +196,30 @@ export default function SignupPage() {
 
   const requestOTP = async () => {
     if (!validateForm()) return;
+    
+    // Optional: Add a loading toast here if you want UI feedback while sending
+    const toastId = toast.loading("Sending code...");
+  
     try {
       const res = await fetch(`${API_BASE_URL}/api/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: formData.email }),
       });
+  
+      const data = await res.json(); // 🔥 Extract the backend response
+  
       if (res.ok) { 
         setStep(1); 
-        toast.success("Verification Code sent!"); 
+        toast.success("Verification Code sent!", { id: toastId }); 
       } else { 
-        toast.error("Failed to send OTP"); 
+        // 🔥 Display the EXACT error sent by your Node.js backend
+        console.error("Backend Error Response:", data);
+        toast.error(data.error || data.message || "Failed to send OTP", { id: toastId }); 
       }
     } catch (err) { 
-      toast.error("Server error"); 
+      console.error("Network/Fetch Error:", err);
+      toast.error("Network error. Check console.", { id: toastId }); 
     }
   };
 
@@ -281,7 +291,16 @@ export default function SignupPage() {
             <div className="auth-form-group" style={{ marginBottom: 0 }}>
               <label className="auth-label" style={{ marginBottom: "8px" }}>Date of Birth*</label>
               <div className="input-wrapper">
-                <input name="dob" value={formData.dob} type="date" max={new Date().toISOString().split("T")[0]} onChange={handleChange} className="auth-input" style={{ paddingLeft: "16px", color: formData.dob ? "#0f172a" : "#94a3b8" }} />
+                <input 
+                  name="dob" 
+                  value={formData.dob} 
+                  type="date" 
+                  min="1900-01-01" // 🔥 ADDED MINIMUM DATE
+                  max={new Date().toISOString().split("T")[0]} 
+                  onChange={handleChange} 
+                  className="auth-input" 
+                  style={{ paddingLeft: "16px", color: formData.dob ? "#0f172a" : "#94a3b8" }} 
+                />
               </div>
             </div>
 
