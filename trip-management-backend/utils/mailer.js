@@ -13,9 +13,10 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+// In utils/mailer.js
 const sendOTPMail = (toEmail, otp) => {
-  // Notice: NO 'await' here. It fires in the background.
-  transporter.sendMail({
+  // 🔥 ADD 'return' HERE
+  return transporter.sendMail({
     from: process.env.EMAIL_USER,
     to: toEmail,
     subject: 'Your TripManager Verification Code',
@@ -27,7 +28,7 @@ const sendOTPMail = (toEmail, otp) => {
         <p style="font-size: 12px; color: #666;">This code will expire in 5 minutes.</p>
       </div>
     `,
-  }).catch(err => console.error("Background OTP Error:", err));
+  });
 };
 
 const sendBookingConfirmation = (userEmail, userName, tripDetails) => {

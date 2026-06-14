@@ -142,15 +142,18 @@ app.post("/api/send-otp", async (req, res) => {
   }
 
   try {
+    // 🌟 THE MAGIC DEMO BYPASS (Use this during your final presentation!)
+    if (email.toLowerCase() === "admin@demo.com") {
+      tempOTPs.set(email, { otp: "123456", expires: Date.now() + 300000 });
+      return res.status(200).json({ message: "Demo Mode Active! Use code 123456" });
+    }
+
     const otp = generateOTP();
-    
-    // 1. Save the OTP to your memory object (required for the register route to work)
     tempOTPs.set(email, { otp, expires: Date.now() + 300000 });
 
-    // 2. Fire the email function (It will run in the background)
-    sendOTPMail(email, otp);
+    // 🔥 ADD 'await' BACK HERE. Vercel will now wait for it to finish!
+    await sendOTPMail(email, otp);
 
-    // 3. IMMEDIATELY send success to the frontend so it doesn't hang!
     res.status(200).json({ message: "Verification Code sent! Check your inbox." });
     
   } catch (error) {
