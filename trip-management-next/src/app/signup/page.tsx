@@ -41,17 +41,17 @@ function SearchableDropdown({ label, options, value, onChange, placeholder, disa
   return (
     <div className="custom-dropdown-container" ref={dropdownRef}>
       <label className="auth-label" style={{ marginBottom: "8px" }}>{label}</label>
-      <div 
+      <div
         className={`dropdown-trigger ${disabled ? "disabled" : ""} ${isOpen ? "active" : ""}`}
         onClick={() => !disabled && setIsOpen(!isOpen)}
         style={{ position: "relative", paddingLeft: icon ? "42px" : "16px" }}
       >
         {icon && <div className="input-icon" style={{ left: "14px", top: "50%", transform: "translateY(-50%)" }}>{icon}</div>}
-        
+
         <span style={{ color: value ? "#0f172a" : "#94a3b8", fontWeight: value ? "600" : "500" }}>
           {loading ? "Loading..." : value || placeholder}
         </span>
-        
+
         {/* Sleek Animated Chevron */}
         <svg className="dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="6 9 12 15 18 9"></polyline>
@@ -72,7 +72,7 @@ function SearchableDropdown({ label, options, value, onChange, placeholder, disa
             {filteredOptions.length > 0 ? (
               filteredOptions.map((opt, index) => (
                 <div
-                  key={`${opt}-${index}`} 
+                  key={`${opt}-${index}`}
                   className={`option-item ${value === opt ? "selected" : ""}`}
                   onClick={() => {
                     onChange(opt);
@@ -102,6 +102,8 @@ export default function SignupPage() {
   const [states, setStates] = useState<string[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [loadingCities, setLoadingCities] = useState(false);
+  // ✅ NEW: Track whether the backend is warmed up (states loaded = backend ready)
+  const [backendReady, setBackendReady] = useState(false);
 
   const [formData, setFormData] = useState({
     username: "",
@@ -113,6 +115,8 @@ export default function SignupPage() {
     state: ""
   });
 
+  // ✅ FIX: Fetch states from backend — this warms up Render on page load.
+  // Once states load, we know the backend is awake and ready.
   useEffect(() => {
     const fetchStates = async () => {
       try {
@@ -121,10 +125,15 @@ export default function SignupPage() {
         const data = await res.json();
         setStates(data);
       } catch (error) {
+        // Fallback states if backend is down
         setStates([
-          "Andhra Pradesh", "Gujarat", "Karnataka", "Kerala", "Maharashtra", 
+          "Andhra Pradesh", "Gujarat", "Karnataka", "Kerala", "Maharashtra",
           "Punjab", "Rajasthan", "Tamil Nadu", "Uttar Pradesh", "West Bengal", "Delhi"
         ]);
+      } finally {
+        // ✅ Mark backend as ready regardless — either it responded or we used fallback.
+        // Either way, the cold start window has passed.
+        setBackendReady(true);
       }
     };
     fetchStates();
@@ -146,10 +155,10 @@ export default function SignupPage() {
         } else {
           throw new Error("API failed");
         }
-      } catch (err) { 
-        setCities(["Capital City", "Metro City", "North District", "South District"]); 
-      } finally { 
-        setLoadingCities(false); 
+      } catch (err) {
+        setCities(["Capital City", "Metro City", "North District", "South District"]);
+      } finally {
+        setLoadingCities(false);
       }
     };
     fetchCities();
@@ -160,7 +169,6 @@ export default function SignupPage() {
 
     // ✅ Real-time Mobile Number Validation (Blocks letters instantly)
     if (name === "contactNumber") {
-      // Replace anything that is NOT a number with an empty string
       const onlyNumbers = value.replace(/[^0-9]/g, '');
       setFormData({ ...formData, [name]: onlyNumbers });
       return;
@@ -183,43 +191,41 @@ export default function SignupPage() {
       toast.error("Please fill all required fields.");
       return false;
     }
-    
-    // ✅ Upgraded Validation: Must be 10 digits AND start with 6, 7, 8, or 9
+
+    // ✅ Must be 10 digits AND start with 6, 7, 8, or 9
     const phoneRegex = /^[6-9]\d{9}$/;
     if (!phoneRegex.test(contactNumber)) {
       toast.error("Please enter a valid 10-digit Indian mobile number.");
       return false;
     }
-    
+
     return true;
   };
 
   const requestOTP = async () => {
     if (!validateForm()) return;
-    
-    // Optional: Add a loading toast here if you want UI feedback while sending
+
     const toastId = toast.loading("Sending code...");
-  
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: formData.email }),
       });
-  
-      const data = await res.json(); // 🔥 Extract the backend response
-  
-      if (res.ok) { 
-        setStep(1); 
-        toast.success("Verification Code sent!", { id: toastId }); 
-      } else { 
-        // 🔥 Display the EXACT error sent by your Node.js backend
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setStep(1);
+        toast.success("Verification Code sent!", { id: toastId });
+      } else {
         console.error("Backend Error Response:", data);
-        toast.error(data.error || data.message || "Failed to send OTP", { id: toastId }); 
+        toast.error(data.error || data.message || "Failed to send OTP", { id: toastId });
       }
-    } catch (err) { 
+    } catch (err) {
       console.error("Network/Fetch Error:", err);
-      toast.error("Network error. Check console.", { id: toastId }); 
+      toast.error("Network error. Check console.", { id: toastId });
     }
   };
 
@@ -230,24 +236,24 @@ export default function SignupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, contact_number: formData.contactNumber, otp }),
       });
-      if (res.ok) { 
-        toast.success("Success! Account created."); 
-        setTimeout(() => router.push("/login"), 1500); 
-      } else { 
-        const d = await res.json(); 
-        toast.error(d.error || d.message || "Verification failed."); 
+      if (res.ok) {
+        toast.success("Success! Account created.");
+        setTimeout(() => router.push("/login"), 1500);
+      } else {
+        const d = await res.json();
+        toast.error(d.error || d.message || "Verification failed.");
       }
-    } catch (err) { 
-      toast.error("Signup failed. Check server."); 
+    } catch (err) {
+      toast.error("Signup failed. Check server.");
     }
   };
 
   return (
     <div className="auth-container">
       <Toaster position="top-center" />
-      
+
       <div className="auth-glass-card" style={{ maxWidth: "680px", padding: "40px 50px" }}>
-        
+
         <div className="auth-header" style={{ marginBottom: "25px" }}>
           {step === 0 && <span className="step-badge">Step 1 of 2</span>}
           {step === 1 && <span className="step-badge">Step 2 of 2</span>}
@@ -259,7 +265,7 @@ export default function SignupPage() {
 
         {step === 0 ? (
           <div className="auth-grid" style={{ gap: "20px 15px" }}>
-            
+
             {/* Name */}
             <div className="auth-form-group auth-full-width" style={{ marginBottom: 0 }}>
               <label className="auth-label" style={{ marginBottom: "8px" }}>Full Name*</label>
@@ -268,7 +274,7 @@ export default function SignupPage() {
                 <input name="username" value={formData.username} placeholder="John Doe" onChange={handleChange} className="auth-input with-icon" />
               </div>
             </div>
-            
+
             {/* Email */}
             <div className="auth-form-group auth-full-width" style={{ marginBottom: 0 }}>
               <label className="auth-label" style={{ marginBottom: "8px" }}>Email Address*</label>
@@ -286,20 +292,20 @@ export default function SignupPage() {
                 <input name="password" value={formData.password} type="password" placeholder="••••••••" onChange={handleChange} className="auth-input with-icon" />
               </div>
             </div>
-            
+
             {/* DOB */}
             <div className="auth-form-group" style={{ marginBottom: 0 }}>
               <label className="auth-label" style={{ marginBottom: "8px" }}>Date of Birth*</label>
               <div className="input-wrapper">
-                <input 
-                  name="dob" 
-                  value={formData.dob} 
-                  type="date" 
-                  min="1900-01-01" // 🔥 ADDED MINIMUM DATE
-                  max={new Date().toISOString().split("T")[0]} 
-                  onChange={handleChange} 
-                  className="auth-input" 
-                  style={{ paddingLeft: "16px", color: formData.dob ? "#0f172a" : "#94a3b8" }} 
+                <input
+                  name="dob"
+                  value={formData.dob}
+                  type="date"
+                  min="1900-01-01"
+                  max={new Date().toISOString().split("T")[0]}
+                  onChange={handleChange}
+                  className="auth-input"
+                  style={{ paddingLeft: "16px", color: formData.dob ? "#0f172a" : "#94a3b8" }}
                 />
               </div>
             </div>
@@ -340,24 +346,34 @@ export default function SignupPage() {
             </div>
 
             <div className="auth-full-width">
-              <button className="auth-btn-primary" onClick={requestOTP} style={{ marginTop: "15px" }}>
-                Send Verification Code
+              {/* ✅ FIX: Button is disabled + shows "Preparing..." until backend is warm */}
+              <button
+                className="auth-btn-primary"
+                onClick={requestOTP}
+                disabled={!backendReady}
+                style={{
+                  marginTop: "15px",
+                  opacity: backendReady ? 1 : 0.6,
+                  cursor: backendReady ? "pointer" : "not-allowed",
+                }}
+              >
+                {backendReady ? "Send Verification Code" : "Preparing..."}
               </button>
             </div>
-            
+
             <p className="auth-footer-text auth-full-width" style={{ marginTop: "20px" }}>
-              Already have an account? 
+              Already have an account?
               <Link href="/login" className="auth-footer-link">Sign In</Link>
             </p>
           </div>
         ) : (
           <div>
-            <input 
-              type="text" 
-              placeholder="000000" 
-              maxLength={6} 
-              value={otp} 
-              onChange={(e) => setOtp(e.target.value)} 
+            <input
+              type="text"
+              placeholder="000000"
+              maxLength={6}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
               className="auth-otp-input"
             />
             <button className="auth-btn-primary" onClick={handleFinalSignup}>
