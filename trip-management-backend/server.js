@@ -148,7 +148,7 @@ app.post("/api/send-otp", async (req, res) => {
     tempOTPs.set(email, { otp, expires: Date.now() + 300000 });
 
     // 2. Fire the email function (It will run in the background)
-    sendOTPMail(email, otp).catch(err => console.error("❌ Background Mailer Error:", err));
+    sendOTPMail(email, otp);
 
     // 3. IMMEDIATELY send success to the frontend so it doesn't hang!
     res.status(200).json({ message: "Verification Code sent! Check your inbox." });
