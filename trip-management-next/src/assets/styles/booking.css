@@ -328,6 +328,214 @@
   opacity: 0.9;
 }
 
+/* ==========================================================================
+   Custom Floating Dropdowns (Replaces Native Select)
+   ========================================================================== */
+
+.custom-dropdown-container {
+  position: relative;
+  width: 100%;
+}
+
+.dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 52px;
+  padding: 0 16px;
+  background-color: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.dropdown-trigger:hover:not(.disabled) {
+  border-color: #cbd5e1;
+}
+
+/* Active focus state */
+.dropdown-trigger.active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.dropdown-trigger.disabled {
+  background-color: #f8fafc;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* SVG Arrow */
+.dropdown-chevron {
+  width: 18px;
+  height: 18px;
+  color: #64748b;
+  transition: transform 0.3s ease, color 0.3s ease;
+  pointer-events: none;
+}
+
+.dropdown-trigger.active .dropdown-chevron {
+  transform: rotate(180deg);
+  color: #2563eb;
+}
+
+/* The floating list box */
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: dropdownFadeIn 0.2s ease;
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-options {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+/* Custom Webkit Scrollbars for the dropdown list */
+.dropdown-options::-webkit-scrollbar {
+  width: 6px;
+}
+.dropdown-options::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
+}
+
+.option-item {
+  padding: 10px 20px;
+  font-size: 15px;
+  color: #334155;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.option-item:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.option-item.selected {
+  background-color: #eff6ff;
+  color: #2563eb;
+  font-weight: 700;
+}
+/* ==========================================================================
+   Compact Inline React DatePicker Custom Overrides
+   ========================================================================== */
+
+/* The main container - adjusted for compact inline display */
+.react-datepicker {
+  font-family: inherit !important;
+  background-color: #ffffff !important;
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  padding: 12px !important; /* Reduced padding from 16px */
+  display: flex !important;
+  justify-content: center;
+  width: 100%;
+}
+
+.react-datepicker__month-container {
+  width: 100%;
+}
+
+/* The header wrapper (Month/Year) */
+.react-datepicker__header {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #f1f5f9 !important; 
+  padding-top: 4px !important; /* Tighter top spacing */
+  padding-bottom: 8px !important; /* Tighter bottom spacing */
+}
+
+/* Month/Year text */
+.react-datepicker__current-month {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  font-size: 1.1rem !important; /* Scaled down slightly */
+  margin-bottom: 8px !important; 
+}
+
+/* Day names row (Su, Mo, Tu, etc.) */
+.react-datepicker__day-name {
+  color: #64748b !important;
+  font-weight: 700 !important;
+  width: 12% !important; 
+  line-height: 2rem !important; /* Tighter vertical spacing */
+  margin: 1% !important;
+  font-size: 0.85rem !important; /* Scaled down */
+}
+
+/* Standard Day blocks */
+.react-datepicker__day {
+  color: #334155 !important;
+  width: 12% !important; 
+  line-height: 2.2rem !important; /* Reduced from 2.8rem to make it much less tall */
+  border-radius: 8px !important; /* Slightly less rounded to fit smaller grid */
+  margin: 1% !important;
+  font-weight: 600 !important;
+  font-size: 0.9rem !important; /* Scaled down */
+  transition: all 0.2s ease;
+}
+
+/* Hover for available days */
+.react-datepicker__day:hover:not(.react-datepicker__day--disabled) {
+  background-color: #f1f5f9 !important; 
+  color: #0f172a !important;
+  transform: scale(1.05);
+}
+
+/* The Selected Day */
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background-color: #2563eb !important; 
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3) !important;
+}
+
+/* Disabled Days */
+.react-datepicker__day--disabled {
+  color: #94a3b8 !important;
+  background-color: #f8fafc !important; 
+  text-decoration: none !important; 
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
+
+/* Navigation Arrows (Prev/Next Month) */
+.react-datepicker__navigation {
+  top: 14px !important; /* Shifted up to match the tighter header */
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: #64748b !important;
+  border-width: 2px 2px 0 0 !important;
+  transition: border-color 0.2s ease;
+}
+
+.react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
+  border-color: #0f172a !important;
+}
 /* =========================================================
    ANIMATIONS
    ========================================================= */

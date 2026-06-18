@@ -1,8 +1,10 @@
 "use client";
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, ChangeEvent } from "react";
+import { useState, useEffect, useRef } from "react";
 import toast, { Toaster } from "react-hot-toast";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import "@/assets/styles/booking.css";
 import { API_BASE_URL } from "@/config";
 
@@ -12,6 +14,66 @@ type Vehicle = {
   price_per_day: number;
   image: string;
 };
+
+// --- CUSTOM DROPDOWN COMPONENT ---
+interface DropdownProps {
+  options: { value: string | number; label: string }[];
+  value: string | number;
+  onChange: (value: any) => void;
+  disabled?: boolean;
+}
+
+function CustomDropdown({ options, value, onChange, disabled }: DropdownProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((opt) => opt.value === value);
+
+  return (
+    <div className="custom-dropdown-container" ref={dropdownRef}>
+      <div
+        className={`dropdown-trigger ${disabled ? "disabled" : ""} ${isOpen ? "active" : ""}`}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+      >
+        <span style={{ color: value !== "" ? "#0f172a" : "#94a3b8", fontWeight: value !== "" ? "600" : "500" }}>
+          {selectedOption ? selectedOption.label : "Select..."}
+        </span>
+        <svg className="dropdown-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
+
+      {isOpen && (
+        <div className="dropdown-menu">
+          <div className="dropdown-options">
+            {options.map((opt, index) => (
+              <div
+                key={index}
+                className={`option-item ${value === opt.value ? "selected" : ""}`}
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+              >
+                {opt.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function BookingPage() {
   const { id } = useParams();
@@ -42,17 +104,9 @@ export default function BookingPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
-  // File Upload State
-  const [idProof, setIdProof] = useState<File | null>(null);
-  const [idProofUrl, setIdProofUrl] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-
   const [showPayment, setShowPayment] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-
-  const isInternational = pkg?.is_international || false;
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
@@ -120,56 +174,12 @@ export default function BookingPage() {
 
   const totalPeople = adults + children;
   const adultsCost = price * adults;
-  const childrenCost = Math.round((price * 0.9) * children);
+  const childrenCost = Math.round((price * 0.7) * children);
   const baseCost = adultsCost + childrenCost;
   const vehicleCost = selectedVehicle ? selectedVehicle.price_per_day : 0;
   const totalPrice = baseCost + vehicleCost;
 
-  const handleFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setIdProof(file);
-      setIsUploading(true);
-
-      const formData = new FormData();
-      formData.append("document", file);
-
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/upload`, {
-          method: "POST",
-          body: formData,
-        });
-        const data = await res.json();
-
-        if (data.url) {
-          setIdProofUrl(data.url);
-          toast.success("Document uploaded securely.");
-        } else {
-          toast.error("Upload failed on server.");
-          setIdProof(null);
-        }
-      } catch (err) {
-        console.error(err);
-        toast.error("Network error during upload.");
-        setIdProof(null);
-      } finally {
-        setIsUploading(false);
-      }
-    }
-  };
-
   const handleProceed = () => {
-    if (!idProofUrl) {
-      toast.error(
-        isUploading
-          ? "Please wait for the document to finish uploading..."
-          : isInternational
-            ? "Travel Requirement: Passport is mandatory for international trips."
-            : "Travel Requirement: Please upload a Govt. ID for hotel check-in."
-      );
-      return;
-    }
-
     if (transferOption !== "none" && (!arrivalPoint || !arrivalTime)) {
       toast.error("Please provide arrival point and time for your transfer.");
       return;
@@ -250,7 +260,6 @@ export default function BookingPage() {
               transfer_option: transferOption,
               arrival_point: arrivalPoint,
               arrival_time: arrivalTime,
-              id_proof_url: idProofUrl,
             }),
           });
 
@@ -294,6 +303,8 @@ export default function BookingPage() {
     }
   };
 
+  const allowedDates = availableDates.map(d => new Date(d));
+
   if (!pkg) return (
     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", color: "#64748b", fontWeight: "600", fontSize: "18px", background: "#f8fafc" }}>
       Preparing Checkout...
@@ -308,6 +319,9 @@ export default function BookingPage() {
           0% { opacity: 1; }
           50% { opacity: 0.5; }
           100% { opacity: 1; }
+        }
+        .react-datepicker-wrapper {
+          width: 100%;
         }
       `}</style>
       <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
@@ -338,7 +352,7 @@ export default function BookingPage() {
 
               {children > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px", color: "#10b981", fontSize: "15px", fontWeight: "600" }}>
-                  <span>Children 10% Off (x{children})</span>
+                  <span>Children 30% Off (x{children})</span>
                   <strong>+ ₹{childrenCost.toLocaleString()}</strong>
                 </div>
               )}
@@ -366,29 +380,39 @@ export default function BookingPage() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
 
-              {/* DEPARTURE DATE DROPDOWN */}
+              {/* CALENDAR DEPARTURE DATE - INLINE */}
               <div>
-                <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>
-                  Select Departure Date
-                </label>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <label style={{ fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>
+                    Select Departure Date
+                  </label>
+                  {date && (
+                    <span style={{ fontSize: "14px", fontWeight: "bold", color: "#2563eb", background: "#eff6ff", padding: "4px 12px", borderRadius: "20px" }}>
+                      Selected: {new Date(date).toLocaleDateString("en-IN", { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                    </span>
+                  )}
+                </div>
 
                 {availableDates.length > 0 ? (
-                  <>
-                    <select
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      disabled={showPayment}
-                      style={{ width: "100%", padding: "16px", borderRadius: "12px", border: "2px solid #e2e8f0", fontSize: "16px", color: "#334155", outline: "none", cursor: showPayment ? "not-allowed" : "pointer", opacity: showPayment ? 0.6 : 1, fontWeight: "bold", background: "#f8fafc" }}
-                    >
-                      {availableDates.map(d => (
-                        <option key={d} value={d}>
-                          {new Date(d).toLocaleDateString("en-IN", { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
-                        </option>
-                      ))}
-                    </select>
+                  <div style={{ pointerEvents: showPayment ? "none" : "auto", opacity: showPayment ? 0.6 : 1, width: "100%" }}>
+                    <DatePicker
+                      selected={date ? new Date(date) : null}
+                      onChange={(selectedDate: Date | null) => {
+                        if (selectedDate) {
+                          const year = selectedDate.getFullYear();
+                          const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                          const day = String(selectedDate.getDate()).padStart(2, '0');
+                          setDate(`${year}-${month}-${day}`);
+                        } else {
+                          setDate("");
+                        }
+                      }}
+                      includeDates={allowedDates}
+                      inline
+                    />
 
                     {date && seatsLeft !== null && (
-                      <div style={{ marginTop: "12px", padding: "12px 16px", borderRadius: "12px", backgroundColor: seatsLeft < totalPeople ? "#fef2f2" : seatsLeft <= 15 ? "#fffbeb" : "#f0fdf4", border: `1px solid ${seatsLeft < totalPeople ? "#fca5a5" : seatsLeft <= 15 ? "#fcd34d" : "#bbf7d0"}` }}>
+                      <div style={{ marginTop: "16px", padding: "12px 16px", borderRadius: "12px", backgroundColor: seatsLeft < totalPeople ? "#fef2f2" : seatsLeft <= 15 ? "#fffbeb" : "#f0fdf4", border: `1px solid ${seatsLeft < totalPeople ? "#fca5a5" : seatsLeft <= 15 ? "#fcd34d" : "#bbf7d0"}` }}>
                         {seatsLeft === 0 ? (
                           <span style={{ color: "#ef4444", fontWeight: "bold" }}>❌ Sold Out for this date!</span>
                         ) : seatsLeft < totalPeople ? (
@@ -398,7 +422,7 @@ export default function BookingPage() {
                         )}
                       </div>
                     )}
-                  </>
+                  </div>
                 ) : (
                   <div style={{ padding: "16px", background: "#fee2e2", color: "#991b1b", borderRadius: "12px", fontWeight: "bold", textAlign: "center", border: "1px solid #fca5a5" }}>
                     Sold Out / No Future Dates Available
@@ -406,39 +430,45 @@ export default function BookingPage() {
                 )}
               </div>
 
-              {/* Adults & Children Grid */}
+              {/* Adults & Children Grid - USING CUSTOM COMPONENT */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
                 <div>
                   <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>Adults</label>
-                  <select value={adults} onChange={(e) => setAdults(Number(e.target.value))} disabled={showPayment} style={{ width: "100%", padding: "16px", borderRadius: "12px", border: "2px solid #e2e8f0", fontSize: "16px", color: "#334155", outline: "none", opacity: showPayment ? 0.6 : 1, background: "#f8fafc" }}>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => <option key={num} value={num}>{num}</option>)}
-                  </select>
+                  <CustomDropdown
+                    options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => ({ value: num, label: num.toString() }))}
+                    value={adults}
+                    onChange={(val) => setAdults(Number(val))}
+                    disabled={showPayment}
+                  />
                 </div>
 
                 <div>
                   <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>Children (Under 12)</label>
-                  <select value={children} onChange={(e) => setChildren(Number(e.target.value))} disabled={showPayment} style={{ width: "100%", padding: "16px", borderRadius: "12px", border: "2px solid #e2e8f0", fontSize: "16px", color: "#334155", outline: "none", opacity: showPayment ? 0.6 : 1, background: "#f8fafc" }}>
-                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => <option key={num} value={num}>{num}</option>)}
-                  </select>
+                  <CustomDropdown
+                    options={[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => ({ value: num, label: num.toString() }))}
+                    value={children}
+                    onChange={(val) => setChildren(Number(val))}
+                    disabled={showPayment}
+                  />
                 </div>
               </div>
 
-              {/* MEAL PREFERENCE */}
+              {/* MEAL PREFERENCE - USING CUSTOM COMPONENT */}
               <div>
                 <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>
                   Meal Preference
                 </label>
-                <select
+                <CustomDropdown
+                  options={[
+                    { value: "Veg", label: "🥦 Pure Vegetarian" },
+                    { value: "Non-Veg", label: "🍗 Non-Vegetarian" },
+                    { value: "Jain", label: "🥗 Jain Food (No Onion/Garlic)" },
+                    { value: "Any", label: "🍽️ No Specific Preference" },
+                  ]}
                   value={mealPreference}
-                  onChange={(e) => setMealPreference(e.target.value)}
+                  onChange={(val) => setMealPreference(val)}
                   disabled={showPayment}
-                  style={{ width: "100%", padding: "16px", borderRadius: "12px", border: "2px solid #e2e8f0", fontSize: "16px", color: "#334155", outline: "none", opacity: showPayment ? 0.6 : 1, cursor: showPayment ? "not-allowed" : "pointer", background: "#f8fafc" }}
-                >
-                  <option value="Veg">🥦 Pure Vegetarian</option>
-                  <option value="Non-Veg">🍗 Non-Vegetarian</option>
-                  <option value="Jain">🥗 Jain Food (No Onion/Garlic)</option>
-                  <option value="Any">🍽️ No Specific Preference</option>
-                </select>
+                />
               </div>
 
               {/* LAST-MILE TRANSFERS */}
@@ -509,57 +539,9 @@ export default function BookingPage() {
                 )}
               </div>
 
-              {/* PASSPORT / ID UPLOAD */}
-              <div className="booking-section">
-                <h3 className="section-title" style={{ display: "block", marginBottom: "15px", fontWeight: "700", color: "#1e293b", fontSize: "16px" }}>
-                  {isInternational ? "Passport Copy (Required for Visa/Travel) *" : "Govt. ID Proof (Required for Hotel Check-in) *"}
-                </h3>
-
-                <div className="file-upload-container">
-                  <div className="upload-box" style={{ border: idProof ? "2px solid #10b981" : "2px dashed #cbd5e1", padding: "24px", borderRadius: "12px", textAlign: "center", background: idProof ? "#ecfdf5" : "#f8fafc", position: "relative" }}>
-
-                    {idProof ? (
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                          <span style={{ fontSize: "24px" }}>{isUploading ? "⏳" : "✅"}</span>
-                          <span className="file-name" style={{ fontSize: "14px", fontWeight: "bold", color: "#065f46", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "250px" }}>
-                            {idProof.name} {isUploading && "(Uploading...)"}
-                          </span>
-                        </div>
-                        {!showPayment && !isUploading && (
-                          <button type="button" onClick={() => { setIdProof(null); setIdProofUrl(null); }} style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer", fontWeight: "bold", textDecoration: "underline" }}>Remove</button>
-                        )}
-                      </div>
-                    ) : (
-                      <>
-                        <span className="upload-icon" style={{ fontSize: "32px", display: "block", marginBottom: "10px" }}>{isInternational ? "🛂" : "🪪"}</span>
-                        <p style={{ margin: "0 0 15px 0", fontSize: "15px", color: "#475569", fontWeight: "600" }}>Click or drag to upload {isInternational ? "Passport" : "ID Proof"}</p>
-
-                        <input
-                          type="file"
-                          accept=".jpg, .jpeg, .pdf, .png"
-                          onChange={handleFileUpload}
-                          className="file-input"
-                          id="passport-upload"
-                          disabled={showPayment || isUploading}
-                          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0, cursor: (showPayment || isUploading) ? "not-allowed" : "pointer" }}
-                        />
-
-                        <label htmlFor="passport-upload" className="btn-browse" style={{ padding: "10px 20px", background: "white", color: "#334155", border: "1px solid #cbd5e1", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", display: "inline-block", pointerEvents: "none", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>
-                          Browse Files
-                        </label>
-                      </>
-                    )}
-                  </div>
-                  <p className="upload-hint" style={{ color: "#94a3b8", fontWeight: "500", marginTop: "10px", display: "block", fontSize: "13px" }}>
-                    Accepted formats: JPG, JPEG, PDF, PNG (Max 5MB).
-                  </p>
-                </div>
-              </div>
-
               <hr style={{ border: "none", borderTop: "1px solid #e2e8f0", margin: "10px 0" }} />
 
-              {/* ✅ AGREEMENT CHECKBOX — shown before Proceed button */}
+              {/* AGREEMENT CHECKBOX */}
               {!showPayment && (
                 <div style={{ padding: "15px", backgroundColor: "#fffbeb", border: "1px solid #fcd34d", borderRadius: "8px" }}>
                   <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>

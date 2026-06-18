@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, MouseEvent } from "react";
 import Link from "next/link";
 import toast, { Toaster } from "react-hot-toast";
 import { API_BASE_URL } from "@/config";
@@ -16,7 +16,8 @@ export default function PackageDetailsPage() {
   
   const [reviews, setReviews] = useState<any[]>([]);
   const [userName, setUserName] = useState("");
-  const [userRating, setUserRating] = useState(5);
+  const [userRating, setUserRating] = useState(0); 
+  const [hoverRating, setHoverRating] = useState(0); 
   const [comment, setComment] = useState("");
 
   const [currentImgIndex, setCurrentImgIndex] = useState(0);
@@ -58,6 +59,12 @@ export default function PackageDetailsPage() {
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (userRating === 0) {
+      toast.error("Please select a star rating.");
+      return;
+    }
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/packages/${id}/reviews`, {
         method: "POST",
@@ -69,10 +76,34 @@ export default function PackageDetailsPage() {
         setReviews([newReview, ...reviews]); 
         setUserName(""); 
         setComment(""); 
-        setUserRating(5); 
+        setUserRating(0); 
+        setHoverRating(0); 
+        toast.success("Review submitted!");
+      } else {
+        toast.error("Failed to submit review.");
       }
     } catch (err) {
       console.error("Failed to submit review", err);
+      toast.error("Something went wrong.");
+    }
+  };
+
+  // --- FRACTIONAL STAR MOUSE TRACKING ---
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    let newHover = (x / rect.width) * 5;
+    newHover = Math.max(0.1, Math.min(5, Number(newHover.toFixed(1))));
+    setHoverRating(newHover);
+  };
+
+  const handleMouseLeave = () => {
+    setHoverRating(0);
+  };
+
+  const handleStarClick = () => {
+    if (hoverRating > 0) {
+      setUserRating(hoverRating);
     }
   };
 
@@ -80,7 +111,6 @@ export default function PackageDetailsPage() {
   if (!pkg) return <div style={{ textAlign: "center", marginTop: "50px", fontSize: "20px", color: "#64748b" }}>Package not found.</div>;
 
   // --- DYNAMIC LOCAL IMAGE DICTIONARY ---
-  // Maps the package title to the exact local images you downloaded
   const getDestinationImages = (title: string) => {
     const t = title.toLowerCase();
     
@@ -100,7 +130,6 @@ export default function PackageDetailsPage() {
     if (t.includes("sikkim")) return ["/images/sikkim-hotel-1.jpg", "/images/sikkim-hotel-2.jpg", "/images/sikkim-hotel-3.jpg"];
     if (t.includes("swiss") || t.includes("switzerland") || t.includes("europe")) return ["/images/swiss-hotel-1.jpg", "/images/swiss-hotel-2.jpg", "/images/swiss-hotel-3.jpg"];
 
-    // Generic fallback if name doesn't match
     return [
       "/images/goa-hotel-1.jpg", 
       "/images/kerala-hotel-1.jpg", 
@@ -109,17 +138,10 @@ export default function PackageDetailsPage() {
   };
 
   const defaultImages = getDestinationImages(pkg.title);
-
-  // 1. Check if the database has REAL images uploaded from the Admin panel
   const dbImages = pkg.hotel_images || [];
   const hasRealUploads = dbImages.some((img: string) => img.includes('uploads'));
-
-  // 2. If no real admin uploads exist yet, strictly force it to use your local folder images
   const hotelImages = hasRealUploads ? dbImages : defaultImages;
-    
-  // Ensure the main image doesn't break
   const mainImg = pkg.image || defaultImages[0];
-
   const allImages = [mainImg, ...hotelImages].filter(Boolean);
   const currentPrice = pkg.discounted_price ? Number(pkg.discounted_price) : Number(pkg.price);
 
@@ -129,19 +151,14 @@ export default function PackageDetailsPage() {
       
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         
-        {/* Back Button */}
         <button onClick={() => router.back()} style={{ background: "transparent", border: "none", color: "#64748b", fontWeight: "bold", cursor: "pointer", marginBottom: "30px", fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
           ← Back to Packages
         </button>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 400px", gap: "40px", alignItems: "start" }}>
           
-          {/* =========================================================
-              LEFT SIDE: GALLERY & CONTENT
-              ========================================================= */}
           <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
             
-            {/* 🏨 DYNAMIC LOCAL IMAGE GALLERY */}
             <div style={{ 
               background: "white", 
               borderRadius: "24px", 
@@ -155,7 +172,6 @@ export default function PackageDetailsPage() {
                   src={allImages[currentImgIndex]} 
                   alt="Package Scenery" 
                   style={{ width: "100%", height: "100%", objectFit: "cover", transition: "opacity 0.4s ease-in-out" }} 
-                  // ✅ Dynamic fallback using your local images
                   onError={(e) => { (e.target as HTMLImageElement).src = defaultImages[0]; }} 
                 />
                 
@@ -199,7 +215,6 @@ export default function PackageDetailsPage() {
                       style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.3s ease" }}
                       onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
                       onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
-                      // ✅ Simplified fallback so images never shuffle
                       onError={(e) => { (e.target as HTMLImageElement).src = defaultImages[0]; }} 
                     />
                   </div>
@@ -207,7 +222,6 @@ export default function PackageDetailsPage() {
               </div>
             </div>
 
-            {/* 📝 TRIP DETAILS CARD */}
             <div style={{ background: "white", padding: "40px", borderRadius: "24px", border: "1px solid #e2e8f0", boxShadow: "0 10px 25px rgba(0,0,0,0.02)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
                 <span style={{ color: "#2563eb", fontWeight: "800", fontSize: "13px", textTransform: "uppercase", letterSpacing: "1.5px", background: "#eff6ff", padding: "6px 12px", borderRadius: "8px" }}>
@@ -307,16 +321,87 @@ export default function PackageDetailsPage() {
               {/* REVIEWS SECTION */}
               <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: "40px", marginTop: "60px" }}>
                 <h3 style={{ fontSize: "22px", fontWeight: "800", color: "#0f172a", marginBottom: "30px" }}>Guest Reviews</h3>
+                
                 <form onSubmit={handleSubmitReview} style={{ marginBottom: "50px", background: "#f8fafc", padding: "30px", borderRadius: "20px", border: "1px solid #e2e8f0" }}>
-                  <h4 style={{ margin: "0 0 20px 0", fontSize: "16px", color: "#0f172a" }}>Share your experience</h4>
-                  <div style={{ display: "flex", gap: "15px", marginBottom: "15px" }}>
-                    <input placeholder="Your Name" value={userName} onChange={(e) => setUserName(e.target.value)} required style={{ flex: 1, padding: "12px", borderRadius: "10px", border: "1px solid #cbd5e1", outline: "none", fontFamily: "inherit" }} />
-                    <select value={userRating} onChange={(e) => setUserRating(Number(e.target.value))} style={{ padding: "12px", borderRadius: "10px", border: "1px solid #cbd5e1", outline: "none", background: "white", fontFamily: "inherit" }}>
-                      {[5,4,3,2,1].map(num => <option key={num} value={num}>{num} Stars</option>)}
-                    </select>
+                  <h4 style={{ margin: "0 0 10px 0", fontSize: "16px", color: "#0f172a" }}>Share your experience</h4>
+                  
+                  {/* INTERACTIVE FRACTIONAL STARS - STRETCHED */}
+                  <div style={{ marginBottom: "25px" }}>
+                    <div 
+                      onMouseMove={handleMouseMove}
+                      onMouseLeave={handleMouseLeave}
+                      onClick={handleStarClick}
+                      style={{ 
+                        position: "relative", 
+                        display: "inline-block", 
+                        cursor: "pointer", 
+                        fontSize: "56px",
+                        lineHeight: "1",
+                        userSelect: "none"
+                      }}
+                    >
+                      {/* Grey background layer */}
+                      <div style={{ color: "#cbd5e1", display: "flex", letterSpacing: "8px" }}>
+                        <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+                      </div>
+                      
+                      {/* Gold foreground layer */}
+                      <div style={{ 
+                        position: "absolute", 
+                        top: 0, 
+                        left: 0, 
+                        whiteSpace: "nowrap", 
+                        overflow: "hidden", 
+                        width: `${((hoverRating || userRating) / 5) * 100}%`, 
+                        color: "#eab308",
+                        display: "flex",
+                        letterSpacing: "8px",
+                        pointerEvents: "none"
+                      }}>
+                        <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+                      </div>
+                    </div>
                   </div>
-                  <textarea placeholder="Tell us about your trip..." value={comment} onChange={(e) => setComment(e.target.value)} required style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #cbd5e1", minHeight: "80px", marginBottom: "15px", outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }} />
-                  <button type="submit" style={{ background: "#0f172a", color: "white", padding: "12px 25px", border: "none", borderRadius: "10px", fontWeight: "700", cursor: "pointer", transition: "0.2s" }}>Submit Review</button>
+
+                  <input 
+                    placeholder="Your Name" 
+                    value={userName} 
+                    onChange={(e) => setUserName(e.target.value)} 
+                    required 
+                    style={{ 
+                      width: "100%", 
+                      padding: "16px",
+                      borderRadius: "10px", 
+                      border: "1px solid #cbd5e1", 
+                      outline: "none", 
+                      fontFamily: "inherit",
+                      marginBottom: "15px",
+                      boxSizing: "border-box" 
+                    }} 
+                  />
+
+                  <textarea 
+                    placeholder="Tell us about your trip..." 
+                    value={comment} 
+                    onChange={(e) => setComment(e.target.value)} 
+                    required 
+                    style={{ 
+                      width: "100%", 
+                      padding: "16px",
+                      borderRadius: "10px", 
+                      border: "1px solid #cbd5e1", 
+                      minHeight: "100px",
+                      marginBottom: "15px", 
+                      outline: "none", 
+                      resize: "vertical", 
+                      boxSizing: "border-box", 
+                      fontFamily: "inherit" 
+                    }} 
+                  />
+                  
+                  <button type="submit" style={{ background: "#0f172a", color: "white", padding: "14px 25px", border: "none", borderRadius: "10px", fontWeight: "700", cursor: "pointer", transition: "0.2s" }}>
+                    Submit Review
+                  </button>
                 </form>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
@@ -327,7 +412,14 @@ export default function PackageDetailsPage() {
                       <div key={rev.id || idx} style={{ paddingBottom: "30px", borderBottom: "1px solid #f1f5f9" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                           <span style={{ fontWeight: "800", color: "#0f172a", fontSize: "16px" }}>{rev.user_name}</span>
-                          <span style={{ color: "#eab308", letterSpacing: "2px", fontSize: "14px" }}>{"★".repeat(rev.rating)}<span style={{ color: "#e2e8f0" }}>{"★".repeat(5 - rev.rating)}</span></span>
+                          
+                          <div style={{ position: "relative", display: "inline-block", fontSize: "16px", color: "#e2e8f0", letterSpacing: "2px" }}>
+                            <span>★★★★★</span>
+                            <div style={{ position: "absolute", top: 0, left: 0, whiteSpace: "nowrap", overflow: "hidden", width: `${(rev.rating / 5) * 100}%`, color: "#eab308" }}>
+                              <span>★★★★★</span>
+                            </div>
+                          </div>
+
                         </div>
                         <p style={{ color: "#475569", margin: 0, lineHeight: "1.6", fontSize: "15px" }}>{rev.comment}</p>
                         {rev.created_at && <span style={{ fontSize: "12px", color: "#94a3b8", marginTop: "10px", display: "block" }}>{new Date(rev.created_at).toLocaleDateString("en-IN")}</span>}
@@ -340,9 +432,6 @@ export default function PackageDetailsPage() {
 
           </div>
 
-          {/* =========================================================
-              RIGHT SIDE: STICKY BOOKING CARD 
-              ========================================================= */}
           <div style={{ position: "sticky", top: "100px", alignSelf: "start" }}> 
             
             <div style={{ background: "white", padding: "32px", borderRadius: "24px", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", border: "1px solid #e2e8f0" }}>
@@ -361,16 +450,36 @@ export default function PackageDetailsPage() {
                   <span style={{ color: "#475569", fontWeight: "700", fontSize: "16px" }}>Duration</span>
                   <span style={{ color: "#0f172a", fontWeight: "900", fontSize: "16px" }}>{pkg.duration_days}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ color: "#475569", fontWeight: "700", fontSize: "16px" }}>Cancellation</span>
-                  <span style={{ color: "#10b981", fontWeight: "800", fontSize: "16px" }}>Free up to 48hrs</span>
+                
+                {/* NEW COLOR-CODED CANCELLATION POLICY TIERS */}
+                <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: "20px" }}>
+                  <span style={{ color: "#0f172a", fontWeight: "800", fontSize: "14px", display: "block", marginBottom: "12px" }}>Cancellation Policy</span>
+                  
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "8px" }}>
+                    <span style={{ color: "#64748b", fontWeight: "600" }}>30+ Days prior</span>
+                    <span style={{ color: "#10b981", fontWeight: "800" }}>100% Refund</span>
+                  </div>
+                  
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "8px" }}>
+                    <span style={{ color: "#64748b", fontWeight: "600" }}>15 - 29 Days</span>
+                    <span style={{ color: "#eab308", fontWeight: "800" }}>50% Refund</span>
+                  </div>
+                  
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "8px" }}>
+                    <span style={{ color: "#64748b", fontWeight: "600" }}>7 - 14 Days</span>
+                    <span style={{ color: "#f97316", fontWeight: "800" }}>25% Refund</span>
+                  </div>
+                  
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                    <span style={{ color: "#64748b", fontWeight: "600" }}>Less than 7 Days</span>
+                    <span style={{ color: "#ef4444", fontWeight: "800" }}>No Refund</span>
+                  </div>
                 </div>
+
               </div>
 
-              {/* Actions Grid */}
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 
-                {/* Primary Button */}
                 <button 
                   onClick={() => router.push(`/booking/${pkg.id}`)}
                   style={{ width: "100%", padding: "18px", background: "#2563eb", color: "white", border: "none", borderRadius: "14px", fontSize: "16px", fontWeight: "800", cursor: "pointer", textDecoration: "none", display: "inline-block", textAlign: "center", transition: "opacity 0.2s ease" }} 
@@ -380,14 +489,12 @@ export default function PackageDetailsPage() {
                   Book Now
                 </button>
 
-                {/* Secondary Outline Button */}
                 <Link href="/packages" style={{ width: "100%", padding: "18px", background: "white", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: "14px", fontSize: "16px", fontWeight: "800", cursor: "pointer", textDecoration: "none", display: "inline-block", textAlign: "center", transition: "all 0.2s ease" }} onMouseOver={(e) => { e.currentTarget.style.background = "#f8fafc"; e.currentTarget.style.color = "#0f172a"; }} onMouseOut={(e) => { e.currentTarget.style.background = "white"; e.currentTarget.style.color = "#64748b"; }}>
                   ← Back to all packages
                 </Link>
 
               </div>
 
-              {/* Footer */}
               <div style={{ textAlign: "center", marginTop: "24px" }}>
                  <p style={{ margin: 0, fontSize: "13px", color: "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", fontWeight: "500" }}>
                    🔒 Secure, SSL encrypted payment
