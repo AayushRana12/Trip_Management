@@ -380,18 +380,11 @@ export default function BookingPage() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
 
-              {/* CALENDAR DEPARTURE DATE - INLINE */}
+              {/* CALENDAR DEPARTURE DATE - 2 MONTH POPOVER */}
               <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                  <label style={{ fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>
-                    Select Departure Date
-                  </label>
-                  {date && (
-                    <span style={{ fontSize: "14px", fontWeight: "bold", color: "#2563eb", background: "#eff6ff", padding: "4px 12px", borderRadius: "20px" }}>
-                      Selected: {new Date(date).toLocaleDateString("en-IN", { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                    </span>
-                  )}
-                </div>
+                <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>
+                  Select Departure Date
+                </label>
 
                 {availableDates.length > 0 ? (
                   <div style={{ pointerEvents: showPayment ? "none" : "auto", opacity: showPayment ? 0.6 : 1, width: "100%" }}>
@@ -408,7 +401,11 @@ export default function BookingPage() {
                         }
                       }}
                       includeDates={allowedDates}
-                      inline
+                      monthsShown={2}
+                      dateFormat="EEE, dd MMM yyyy"
+                      placeholderText="Select your travel date"
+                      className="custom-date-input"
+                      disabled={showPayment}
                     />
 
                     {date && seatsLeft !== null && (

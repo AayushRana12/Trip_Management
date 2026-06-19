@@ -440,60 +440,102 @@
   font-weight: 700;
 }
 /* ==========================================================================
-   Compact Inline React DatePicker Custom Overrides
+   Two-Month Popup React DatePicker Custom Overrides
    ========================================================================== */
 
-/* The main container - adjusted for compact inline display */
+/* The actual input field holding the date */
+.custom-date-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 16px;
+  padding-left: 42px; /* Space for calendar icon */
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+  outline: none;
+  background: #ffffff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="%2364748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>') no-repeat left 14px center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.custom-date-input:hover {
+  border-color: #cbd5e1;
+}
+
+.custom-date-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.custom-date-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #f8fafc;
+}
+
+/* The main popup calendar container */
 .react-datepicker {
   font-family: inherit !important;
   background-color: #ffffff !important;
   border-radius: 16px !important;
   border: 1px solid #e2e8f0 !important;
-  padding: 12px !important; /* Reduced padding from 16px */
-  display: flex !important;
-  justify-content: center;
-  width: 100%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  padding: 16px !important;
+  /* Allow it to flex and expand to fit both months perfectly without squishing */
+  display: flex !important; 
+  width: max-content !important; 
 }
 
+/* Container holding each individual month */
 .react-datepicker__month-container {
-  width: 100%;
+  width: auto !important; /* Removed 300px restriction */
+  float: none !important;
+}
+
+/* Adds a divider line between the first and second month */
+.react-datepicker__month-container + .react-datepicker__month-container {
+  margin-left: 20px;
+  border-left: 1px solid #e2e8f0;
+  padding-left: 20px;
 }
 
 /* The header wrapper (Month/Year) */
 .react-datepicker__header {
   background-color: #ffffff !important;
-  border-bottom: 1px solid #f1f5f9 !important; 
-  padding-top: 4px !important; /* Tighter top spacing */
-  padding-bottom: 8px !important; /* Tighter bottom spacing */
+  border-bottom: none !important; 
+  padding-top: 8px !important;
+  padding-bottom: 12px !important;
 }
 
 /* Month/Year text */
 .react-datepicker__current-month {
   color: #0f172a !important;
   font-weight: 800 !important;
-  font-size: 1.1rem !important; /* Scaled down slightly */
-  margin-bottom: 8px !important; 
+  font-size: 1.15rem !important;
+  margin-bottom: 12px !important;
 }
 
 /* Day names row (Su, Mo, Tu, etc.) */
 .react-datepicker__day-name {
   color: #64748b !important;
   font-weight: 700 !important;
-  width: 12% !important; 
-  line-height: 2rem !important; /* Tighter vertical spacing */
-  margin: 1% !important;
-  font-size: 0.85rem !important; /* Scaled down */
+  width: 2.2rem !important; /* Scaled down slightly to prevent overflow */
+  line-height: 2.2rem !important;
+  margin: 0.15rem !important;
+  font-size: 0.85rem !important;
 }
 
 /* Standard Day blocks */
 .react-datepicker__day {
   color: #334155 !important;
-  width: 12% !important; 
-  line-height: 2.2rem !important; /* Reduced from 2.8rem to make it much less tall */
-  border-radius: 8px !important; /* Slightly less rounded to fit smaller grid */
-  margin: 1% !important;
+  width: 2.2rem !important; /* Matched day name width */
+  line-height: 2.2rem !important; 
+  border-radius: 8px !important; 
+  margin: 0.15rem !important;
   font-weight: 600 !important;
-  font-size: 0.9rem !important; /* Scaled down */
+  font-size: 0.95rem !important; 
   transition: all 0.2s ease;
 }
 
@@ -515,26 +557,59 @@
 
 /* Disabled Days */
 .react-datepicker__day--disabled {
-  color: #94a3b8 !important;
-  background-color: #f8fafc !important; 
+  color: #cbd5e1 !important;
+  background-color: transparent !important; 
   text-decoration: none !important; 
-  opacity: 0.6 !important;
+  opacity: 0.5 !important;
   cursor: not-allowed !important;
 }
 
-/* Navigation Arrows (Prev/Next Month) */
+/* =======================================================
+   Navigation Arrows (Fixed & Styled)
+   ======================================================= */
 .react-datepicker__navigation {
-  top: 14px !important; /* Shifted up to match the tighter header */
+  top: 22px !important; 
+  height: 34px !important;
+  width: 34px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  background: #f8fafc !important; /* Grey button background */
+  border: 1px solid #e2e8f0 !important;
+  z-index: 10 !important;
+  transition: all 0.2s ease;
 }
 
+.react-datepicker__navigation:hover {
+  background: #e2e8f0 !important;
+}
+
+.react-datepicker__navigation--previous {
+  left: 16px !important;
+}
+
+.react-datepicker__navigation--next {
+  right: 16px !important;
+}
+
+/* Ensure the inner arrow chevron is visible and centered */
 .react-datepicker__navigation-icon::before {
-  border-color: #64748b !important;
+  border-color: #0f172a !important; /* Bold dark slate arrow */
   border-width: 2px 2px 0 0 !important;
-  transition: border-color 0.2s ease;
+  top: auto !important; 
+  right: auto !important;
+  position: relative !important;
 }
 
-.react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
-  border-color: #0f172a !important;
+/* Nudge the left arrow slightly for visual center */
+.react-datepicker__navigation--previous .react-datepicker__navigation-icon::before {
+  left: 2px !important;
+}
+
+/* Hide the small triangle pointer attached to the input */
+.react-datepicker__triangle {
+  display: none !important;
 }
 /* =========================================================
    ANIMATIONS
