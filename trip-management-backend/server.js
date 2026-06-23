@@ -615,11 +615,13 @@ app.post('/api/payment/verify', async (req, res) => {
     people,
     adults,
     children,
+    rooms, 
     meal_preference,
     transfer_option,
     arrival_point,
     arrival_time,
-    id_proof_url
+    id_proof_url,
+    transfer_cost // ✨ NEW: Catch the transfer cost from the frontend
   } = req.body;
 
   // --- STEP 1: Verify the Razorpay Signature ---
@@ -651,22 +653,28 @@ app.post('/api/payment/verify', async (req, res) => {
     const basePrice = Number(pkgRes.rows[0].final_price);
     const adultCount = Number(adults) || 1;
     const childCount = Number(children) || 0;
-    const total_price = (basePrice * adultCount) + ((basePrice * 0.5) * childCount);
+    const safeTransferCost = Number(transfer_cost) || 0; // ✨ NEW: Safely parse it
+    
+    // ✨ FIX: Add the transfer cost so the database matches Razorpay exactly!
+    const total_price = (basePrice * adultCount) + ((basePrice * 0.7) * childCount) + safeTransferCost;
 
-    // B. Create the Confirmed Booking FIRST (to get the booking_id)
+    // B. Create the Confirmed Booking FIRST 
+    // Now inserting razorpay_payment_id and razorpay_order_id directly into bookings table
     const bookingQuery = `
       INSERT INTO bookings (
-        package_id, user_id, travel_date, people, adults, children, status, 
-        meal_preference, id_proof_url, price, total_price, transfer_option, arrival_point, arrival_time
+        user_id, package_id, travel_date, people, adults, children, rooms, 
+        meal_preference, id_proof_url, price, total_price, transfer_option, arrival_point, arrival_time,
+        status, razorpay_payment_id, razorpay_order_id
       )
-      VALUES ($1, $2, $3, $4, $5, $6, 'confirmed', $7, $8, $9, $10, $11, $12, $13)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'confirmed', $15, $16)
       RETURNING id;
     `;
 
     const bookingValues = [
-      package_id, user_id, travel_date, people, adultCount, childCount,
+      user_id, package_id, travel_date, people, adultCount, childCount, rooms || 1,
       meal_preference || 'Any', id_proof_url || null, basePrice, total_price,
-      transfer_option || 'none', arrival_point || null, arrival_time || null
+      transfer_option || 'none', arrival_point || null, arrival_time || null,
+      razorpay_payment_id, razorpay_order_id
     ];
 
     const bookingResult = await client.query(bookingQuery, bookingValues);
@@ -677,7 +685,6 @@ app.post('/api/payment/verify', async (req, res) => {
       INSERT INTO payments (booking_id, user_id, amount, payment_method, payment_id, transaction_id, status)
       VALUES ($1, $2, $3, 'Razorpay', $4, $5, 'successful')
     `;
-    // We map razorpay_order_id to payment_id and razorpay_payment_id to transaction_id to match your Admin UI!
     const paymentValues = [newBookingId, user_id, total_price, razorpay_order_id, razorpay_payment_id];
 
     await client.query(paymentQuery, paymentValues);
@@ -719,9 +726,9 @@ app.post('/api/payment/verify', async (req, res) => {
 
 /* ================= BOOKINGS ================= */
 
-// ✅ Old mock booking route (Updated with new Transfer system mapping)
+// ✅ Mock booking route updated to reflect new schema structure
 app.post("/api/book", async (req, res) => {
-  const { user_id, package_id, travel_date, people, adults, children, meal_preference, transfer_option, arrival_point, arrival_time, id_proof_url } = req.body;
+  const { user_id, package_id, travel_date, people, adults, children, rooms, meal_preference, transfer_option, arrival_point, arrival_time, id_proof_url } = req.body;
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -743,38 +750,30 @@ app.post("/api/book", async (req, res) => {
     const price = Number(pkgRes.rows[0].final_price);
     const pkgTitle = pkgRes.rows[0].title;
 
-    // ✅ NEW: Children Pricing Logic (50% off for kids)
+    // ✅ Children Pricing Logic (50% off for kids)
     const adultTotal = price * adultCount;
-    const childTotal = (price * 0.5) * childCount;
+    const childTotal = (price * 0.7) * childCount;
     let total = adultTotal + childTotal;
 
+    const pay_id = "PAY_" + Date.now();
+    const txn_id = "TXN_" + Date.now();
+
+    // ✅ Updated with razorpay fields to match new schema
     const query = `
       INSERT INTO bookings (
-        package_id, user_id, travel_date, people, adults, children, status, 
-        meal_preference, id_proof_url, price, total_price, transfer_option, arrival_point, arrival_time
+        user_id, package_id, travel_date, people, adults, children, rooms, 
+        meal_preference, id_proof_url, price, total_price, transfer_option, arrival_point, arrival_time,
+        status, razorpay_payment_id, razorpay_order_id
       ) 
-      VALUES ($1, $2, $3, $4, $5, $6, 'confirmed', $7, $8, $9, $10, $11, $12, $13) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'confirmed', $15, $16) 
       RETURNING *;
     `;
 
     const bookingResult = await client.query(query, [
-      package_id,
-      user_id,
-      travel_date,
-      totalPeople,
-      adultCount,
-      childCount,
-      meal_preference || 'Any',
-      id_proof_url || null,
-      price,
-      total,
-      transfer_option || 'none',
-      arrival_point || null,
-      arrival_time || null
+      user_id, package_id, travel_date, totalPeople, adultCount, childCount, rooms || 1, 
+      meal_preference || 'Any', id_proof_url || null, price, total, transfer_option || 'none', 
+      arrival_point || null, arrival_time || null, txn_id, pay_id
     ]);
-
-    const pay_id = "PAY_" + Date.now();
-    const txn_id = "TXN_" + Date.now();
 
     await client.query(
       "INSERT INTO payments (booking_id, user_id, amount, payment_method, payment_id, transaction_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7)",
@@ -865,71 +864,112 @@ app.get("/api/bookings/:userId", async (req, res) => {
   }
 });
 
-// ✅ SMART CANCELLATION & REFUND LOGIC
-app.put("/api/bookings/:id/cancel", async (req, res) => {
-  try {
-    const bookingId = req.params.id;
+// ✅ POST: Cancel Booking & Process Refund (NEW TIERED REFUND POLICY)
+app.post('/api/bookings/cancel', async (req, res) => {
+  const { booking_id, user_id } = req.body;
 
-    // 1. Fetch the booking details WITH user and package info for the email
-    const bookingQuery = await pool.query(`
-      SELECT b.travel_date, b.total_price, u.email, u.username, p.title as package_title
+  try {
+    // 1. Fetch the booking (Joining users and packages for the email logic)
+    const fetchQuery = `
+      SELECT b.*, u.email, u.username, p.title as package_title 
       FROM bookings b
       JOIN users u ON b.user_id = u.id
       JOIN packages p ON b.package_id = p.id
-      WHERE b.id = $1
-    `, [bookingId]);
+      WHERE b.id = $1 AND b.user_id = $2 AND b.status != 'cancelled'
+    `;
+    const bookingResult = await pool.query(fetchQuery, [booking_id, user_id]);
 
-    if (bookingQuery.rows.length === 0) {
-      return res.status(404).json({ success: false, message: "Booking not found" });
+    if (bookingResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Booking not found or already cancelled." });
     }
 
-    const booking = bookingQuery.rows[0];
+    const booking = bookingResult.rows[0];
     const travelDate = new Date(booking.travel_date);
-    const currentDate = new Date();
+    const today = new Date();
 
-    // 2. Calculate the difference in hours
-    const timeDifferenceMs = travelDate.getTime() - currentDate.getTime();
-    const hoursDifference = timeDifferenceMs / (1000 * 60 * 60);
+    // 2. Calculate days until the trip
+    const timeDiff = travelDate.getTime() - today.getTime();
+    const daysUntilTrip = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
-    // 3. Apply the 48-Hour Business Rule
-    let refundAmount = 0;
-    let refundStatus = "No Refund (Cancelled within 48 hours)";
-
-    if (hoursDifference >= 48) {
-      refundAmount = booking.total_price;
-      refundStatus = "Full Refund Issued";
+    // 3. Apply your exact Tiered Refund Policy logic
+    let refundPercentage = 0;
+    if (daysUntilTrip >= 30) {
+      refundPercentage = 100;
+    } else if (daysUntilTrip >= 15 && daysUntilTrip <= 29) {
+      refundPercentage = 50;
+    } else if (daysUntilTrip >= 7 && daysUntilTrip <= 14) {
+      refundPercentage = 25;
+    } else {
+      refundPercentage = 0; // Less than 7 days
     }
 
-    // 4. Update the database WITH the refund details
-    const updateQuery = await pool.query(
-      "UPDATE bookings SET status = 'cancelled', refund_amount = $1, refund_status = $2 WHERE id = $3 RETURNING *",
-      [refundAmount, refundStatus, bookingId]
-    );
+    const refundAmountINR = (booking.total_price * refundPercentage) / 100;
 
-    // 5. Fire off the cancellation email in the background!
-    sendCancellationEmail(
-      booking.email,
-      booking.username,
-      {
-        title: booking.package_title,
-        date: booking.travel_date,
-        price: booking.total_price,
-        refundAmount: refundAmount,
-        refundStatus: refundStatus
-      }
-    ).catch(err => console.error("Non-fatal cancellation email error:", err));
+    // 4. Process Refund with Razorpay
+    let razorpayRefundId = null;
+    let refundStatus = refundPercentage > 0 ? 'Processed' : 'No Refund Applicable';
+    
+    if (refundPercentage > 0 && booking.razorpay_payment_id && !booking.razorpay_payment_id.startsWith('TXN_')) {
+      
+      const exactAmountPaise = Math.round(Number(refundAmountINR) * 100);
+      const cleanPaymentId = booking.razorpay_payment_id.trim();
 
+      // DEBUG: Print exactly what we are sending to Razorpay
+      console.log("🔄 Attempting Refund -> Payment ID:", cleanPaymentId, "| Amount (Paise):", exactAmountPaise);
+
+      // ONLY send the amount. Removed the 'speed' parameter entirely.
+      const refundResponse = await razorpay.payments.refund(cleanPaymentId, {
+        amount: exactAmountPaise
+      });
+      
+      razorpayRefundId = refundResponse.id;
+    }
+
+    // 5. Update Database
+    const updateQuery = `
+      UPDATE bookings 
+      SET 
+        status = 'cancelled', 
+        refund_amount = $1, 
+        refund_status = $2,
+        refund_id = $3
+      WHERE id = $4
+      RETURNING *;
+    `;
+    
+    await pool.query(updateQuery, [
+      refundAmountINR, refundStatus, razorpayRefundId, booking_id
+    ]);
+
+    // 6. Fire off the cancellation email safely
+    try {
+      sendCancellationEmail(
+        booking.email,
+        booking.username,
+        {
+          title: booking.package_title,
+          date: booking.travel_date,
+          price: booking.total_price,
+          refundAmount: refundAmountINR,
+          refundStatus: refundStatus
+        }
+      );
+    } catch (emailError) {
+      console.error("Non-fatal cancellation email error:", emailError);
+    }
+
+    // Finally send the success response!
     res.json({
       success: true,
-      booking: updateQuery.rows[0],
-      refund_amount: refundAmount,
-      refund_status: refundStatus,
-      hours_remaining: Math.round(hoursDifference)
+      message: `Booking cancelled successfully.`,
+      days_until_trip: daysUntilTrip,
+      refund_percentage: refundPercentage,
+      refund_amount: refundAmountINR
     });
 
-  } catch (err) {
-    console.error("Cancellation Error:", err);
-    res.status(500).json({ success: false, error: "Failed to cancel booking" });
+  } catch (error) {
+    console.error("Cancellation Error:", error);
+    res.status(500).json({ success: false, error: "Failed to process cancellation." });
   }
 });
 
@@ -954,36 +994,38 @@ app.get("/api/admin/stats", async (req, res) => {
     const usersResult = await pool.query("SELECT COUNT(*) FROM users");
     const pendingComplaints = await pool.query("SELECT COUNT(*) FROM complaints WHERE status = 'pending'");
 
-    // 2. All-Time Booking Metrics
+    // 2. All-Time Booking Metrics (UPDATED FOR NET REVENUE)
     const bookingsData = await pool.query(`
       SELECT 
         COUNT(*) as total_bookings,
-        SUM(CASE WHEN status = 'confirmed' THEN total_price ELSE 0 END) as total_revenue,
+        SUM(total_price) as gross_revenue,
+        SUM(COALESCE(refund_amount, 0)) as total_refunds,
+        SUM(total_price - COALESCE(refund_amount, 0)) as total_revenue,
         SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as total_cancelled,
         AVG(CASE WHEN status = 'confirmed' THEN total_price ELSE NULL END) as average_booking_value
       FROM bookings
+      WHERE status != 'failed'
     `);
 
     // 3. Trends (This Month vs Last Month)
     const currentMonth = await pool.query(`
-      SELECT COUNT(*) as bookings, COALESCE(SUM(total_price), 0) as revenue FROM bookings 
-      WHERE status = 'confirmed' AND DATE_TRUNC('month', booking_date) = DATE_TRUNC('month', CURRENT_DATE)
+      SELECT COUNT(*) as bookings, COALESCE(SUM(total_price - COALESCE(refund_amount, 0)), 0) as revenue FROM bookings 
+      WHERE status != 'failed' AND DATE_TRUNC('month', booking_date) = DATE_TRUNC('month', CURRENT_DATE)
     `);
 
     const lastMonth = await pool.query(`
-      SELECT COUNT(*) as bookings, COALESCE(SUM(total_price), 0) as revenue FROM bookings 
-      WHERE status = 'confirmed' AND DATE_TRUNC('month', booking_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+      SELECT COUNT(*) as bookings, COALESCE(SUM(total_price - COALESCE(refund_amount, 0)), 0) as revenue FROM bookings 
+      WHERE status != 'failed' AND DATE_TRUNC('month', booking_date) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
     `);
 
     // Helper function to calculate percentage growth safely
     const calcTrend = (current, previous) => {
       const c = Number(current) || 0;
       const p = Number(previous) || 0;
-      if (p === 0) return c > 0 ? 100 : 0; // If last month was 0, and this month is > 0, it's 100% growth
+      if (p === 0) return c > 0 ? 100 : 0; 
       return Math.round(((c - p) / p) * 100);
     };
 
-    // Safely parse the database strings into numbers!
     const currRev = currentMonth.rows.length > 0 ? currentMonth.rows[0].revenue : 0;
     const lastRev = lastMonth.rows.length > 0 ? lastMonth.rows[0].revenue : 0;
     const currBook = currentMonth.rows.length > 0 ? currentMonth.rows[0].bookings : 0;
@@ -996,7 +1038,7 @@ app.get("/api/admin/stats", async (req, res) => {
     const totalC = parseInt(bookingsData.rows[0]?.total_cancelled) || 0;
     const cancelRate = totalB > 0 ? Math.round((totalC / totalB) * 100) : 0;
 
-    // 4. NEW: Smart Capacity Alerts (> 90% Full)
+    // 4. Smart Capacity Alerts
     const capacityAlertsQuery = await pool.query(`
       SELECT 
         p.title, 
@@ -1034,7 +1076,7 @@ app.get("/api/admin/stats", async (req, res) => {
   }
 });
 
-// ✅ FETCH ALL ADMIN BOOKINGS (Ensures b.* fetches id_proof_url)
+// ✅ FETCH ALL ADMIN BOOKINGS 
 app.get("/api/admin/bookings", async (req, res) => {
   try {
     const query = `
@@ -1056,61 +1098,60 @@ app.get("/api/admin/bookings", async (req, res) => {
   }
 });
 
-// ADMIN ROUTE: Get Monthly Bookings for the Chart
-app.get("/api/admin/chart", async (req, res) => {
-  try {
-    const query = `
-      SELECT 
-        TO_CHAR(booking_date, 'Mon YYYY') as title, 
-        COUNT(*) as count 
-      FROM bookings 
-      GROUP BY TO_CHAR(booking_date, 'Mon YYYY'), DATE_TRUNC('month', booking_date)
-      ORDER BY DATE_TRUNC('month', booking_date) ASC
-      LIMIT 6;
-    `;
-    const result = await pool.query(query);
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch chart data" });
-  }
-});
+
+/* ================= SQL DATE RANGE HELPER ================= */
+// This smart helper translates our frontend dropdown values into PostgreSQL Interval commands
+const getDateFilter = (range, columnName, tableAlias = '') => {
+  const prefix = tableAlias ? `${tableAlias}.` : '';
+  if (range === '30_days') return `AND ${prefix}${columnName} >= CURRENT_DATE - INTERVAL '30 days'`;
+  if (range === '6_months') return `AND ${prefix}${columnName} >= CURRENT_DATE - INTERVAL '6 months'`;
+  if (range === '1_year') return `AND ${prefix}${columnName} >= CURRENT_DATE - INTERVAL '1 year'`;
+  return ''; // 'all_time' returns no filter
+};
 
 /* ================= ADVANCED ANALYTICS ROUTE ================= */
 app.get("/api/admin/advanced-analytics", async (req, res) => {
   try {
-    // 1. Revenue Trend (Area Chart)
+    res.setHeader('Cache-Control', 'no-store'); // ✨ Prevents browser caching bugs
+    const { range } = req.query; 
+    
+    // We are using travel_date so your mock data creates beautiful curves!
+    const dateFilter = getDateFilter(range, 'travel_date');
+    const bDateFilter = getDateFilter(range, 'travel_date', 'b'); 
+
     const revenueTrendQuery = await pool.query(`
-      SELECT TO_CHAR(booking_date, 'Mon YYYY') as month, COALESCE(SUM(total_price), 0) as revenue 
-      FROM bookings WHERE status = 'confirmed' 
-      GROUP BY TO_CHAR(booking_date, 'Mon YYYY'), DATE_TRUNC('month', booking_date)
-      ORDER BY DATE_TRUNC('month', booking_date) ASC LIMIT 6;
+      SELECT TO_CHAR(travel_date, 'Mon YYYY') as month, 
+      SUM(total_price - COALESCE(refund_amount, 0)) as revenue 
+      FROM bookings WHERE status != 'failed' ${dateFilter}
+      GROUP BY TO_CHAR(travel_date, 'Mon YYYY'), DATE_TRUNC('month', travel_date)
+      ORDER BY DATE_TRUNC('month', travel_date) ASC;
     `);
 
-    // 2. Booking Status Breakdown (Donut Chart)
     const statusQuery = await pool.query(`
-      SELECT status as name, COUNT(*) as value FROM bookings GROUP BY status;
+      SELECT status as name, COUNT(*) as value FROM bookings 
+      WHERE 1=1 ${dateFilter} 
+      GROUP BY status;
     `);
 
-    // 3. Top Revenue Generating Packages (Horizontal Bar Chart)
     const topPackagesQuery = await pool.query(`
-      SELECT p.title as name, SUM(b.total_price) as revenue
+      SELECT p.title as name, SUM(b.total_price - COALESCE(b.refund_amount, 0)) as revenue
       FROM bookings b JOIN packages p ON b.package_id = p.id
-      WHERE b.status = 'confirmed' GROUP BY p.title ORDER BY revenue DESC LIMIT 5;
+      WHERE b.status != 'failed' ${bDateFilter} 
+      GROUP BY p.title ORDER BY revenue DESC LIMIT 5;
     `);
 
-    // 4. NEW: Monthly Bookings Volume (Bar Chart)
     const bookingsVolumeQuery = await pool.query(`
-      SELECT TO_CHAR(booking_date, 'Mon YYYY') as month, COUNT(*) as count 
+      SELECT TO_CHAR(travel_date, 'Mon YYYY') as month, COUNT(*) as count 
       FROM bookings 
-      GROUP BY TO_CHAR(booking_date, 'Mon YYYY'), DATE_TRUNC('month', booking_date)
-      ORDER BY DATE_TRUNC('month', booking_date) ASC LIMIT 6;
+      WHERE 1=1 ${dateFilter}
+      GROUP BY TO_CHAR(travel_date, 'Mon YYYY'), DATE_TRUNC('month', travel_date)
+      ORDER BY DATE_TRUNC('month', travel_date) ASC;
     `);
 
-    // 5. NEW: Domestic vs International (Pie Chart)
     const tripTypeQuery = await pool.query(`
       SELECT CASE WHEN p.is_international = true THEN 'International' ELSE 'Domestic' END as name, COUNT(b.id) as value
       FROM bookings b JOIN packages p ON b.package_id = p.id
+      WHERE 1=1 ${bDateFilter}
       GROUP BY p.is_international;
     `);
 
@@ -1134,9 +1175,9 @@ app.get("/api/admin/yearly-revenue", async (req, res) => {
     const query = `
       SELECT 
         TO_CHAR(booking_date, 'YYYY') as year, 
-        COALESCE(SUM(total_price), 0) as revenue 
+        SUM(total_price - COALESCE(refund_amount, 0)) as revenue 
       FROM bookings 
-      WHERE status = 'confirmed' 
+      WHERE status != 'failed' 
       GROUP BY TO_CHAR(booking_date, 'YYYY')
       ORDER BY TO_CHAR(booking_date, 'YYYY') ASC;
     `;
@@ -1151,14 +1192,20 @@ app.get("/api/admin/yearly-revenue", async (req, res) => {
 /* ================= NEW ANALYTICS ROUTES ================= */
 app.get('/api/analytics/revenue', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store');
+    const { range } = req.query;
+    console.log(`📊 Fetching Revenue Trend for range: ${range}`);
+    
+    const dateFilter = getDateFilter(range, 'booking_date');
+
     const result = await pool.query(`
       SELECT 
-        TO_CHAR(DATE_TRUNC('month', travel_date), 'Mon YYYY') AS month,
-        SUM(total_price) AS revenue
+        TO_CHAR(DATE_TRUNC('month', booking_date), 'Mon YYYY') AS month,
+        SUM(total_price - COALESCE(refund_amount, 0)) AS revenue
       FROM bookings
-      WHERE status = 'confirmed' 
-      GROUP BY DATE_TRUNC('month', travel_date)
-      ORDER BY DATE_TRUNC('month', travel_date) ASC;
+      WHERE status != 'failed' ${dateFilter}
+      GROUP BY DATE_TRUNC('month', booking_date)
+      ORDER BY DATE_TRUNC('month', booking_date) ASC;
     `);
 
     res.status(200).json(result.rows);
@@ -1170,13 +1217,18 @@ app.get('/api/analytics/revenue', async (req, res) => {
 
 app.get('/api/analytics/volume', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store');
+    const { range } = req.query;
+    const dateFilter = getDateFilter(range, 'booking_date');
+
     const result = await pool.query(`
       SELECT 
-        TO_CHAR(DATE_TRUNC('month', travel_date), 'Mon YYYY') AS month,
+        TO_CHAR(DATE_TRUNC('month', booking_date), 'Mon YYYY') AS month,
         COUNT(id) AS volume
       FROM bookings
-      GROUP BY DATE_TRUNC('month', travel_date)
-      ORDER BY DATE_TRUNC('month', travel_date) ASC;
+      WHERE status != 'failed' ${dateFilter}
+      GROUP BY DATE_TRUNC('month', booking_date)
+      ORDER BY DATE_TRUNC('month', booking_date) ASC;
     `);
 
     res.status(200).json(result.rows);

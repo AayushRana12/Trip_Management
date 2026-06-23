@@ -49,6 +49,8 @@ type Booking = {
   transaction_id: string;
   status: string;
   id_proof_url?: string;
+  refund_amount?: number;
+  refund_status?: string;
 };
 
 type Offer = {
@@ -86,7 +88,6 @@ type AnalyticsData = {
   tripType: { name: string; value: number }[];
 };
 
-// ✅ NEW: Agent Type
 type Agent = {
   agent_id: number;
   agent_name: string;
@@ -125,6 +126,10 @@ function AdminContent() {
   const [agents, setAgents] = useState<Agent[]>([]); 
   const [activeTab, setActiveTab] = useState("analytics"); 
 
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+
   // Advanced Analytics State
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     statusBreakdown: [],
@@ -132,12 +137,15 @@ function AdminContent() {
     tripType: []
   });
 
+  // Date Range State for the dropdown
+  const [dateRange, setDateRange] = useState("6_months");
+
   // Comprehensive Chart States
   const [yearlyRevenue, setYearlyRevenue] = useState<{ year: string; revenue: number }[]>([]);
   const [revenueData, setRevenueData] = useState<{ month: string; revenue: number }[]>([]);
   const [volumeData, setVolumeData] = useState<{ month: string; volume: number }[]>([]);
 
-  // Agent Assignment State (Map of booking ID to selected agent ID)
+  // Agent Assignment State
   const [selectedAgents, setSelectedAgents] = useState<Record<number, string>>({});
 
   // Modals
@@ -164,8 +172,6 @@ function AdminContent() {
   const [dateInput, setDateInput] = useState("");
   const [itinerary, setItinerary] = useState<string[]>([]);
   const [isInternational, setIsInternational] = useState(false);
-  
-  // ✅ NEW: Add Package Hotel Images State
   const [hotelImages, setHotelImages] = useState<string[]>([]);
   const [isUploadingMultiple, setIsUploadingMultiple] = useState(false);
 
@@ -179,8 +185,6 @@ function AdminContent() {
   const [editDateInput, setEditDateInput] = useState("");
   const [editItinerary, setEditItinerary] = useState<string[]>([]);
   const [editIsInternational, setEditIsInternational] = useState(false);
-  
-  // ✅ NEW: Edit Package Hotel Images State
   const [editHotelImages, setEditHotelImages] = useState<string[]>([]);
   const [isUploadingEditMultiple, setIsUploadingEditMultiple] = useState(false);
 
@@ -206,23 +210,30 @@ function AdminContent() {
 
   const today = new Date().toISOString().split("T")[0];
 
-  const fetchData = async () => {
+  const fetchData = async (currentRange = "6_months") => {
+    setLoading(true);
     try {
+      // We safely catch individual endpoint failures so one error never zeroes out the dashboard
       const [
         pkgs, bks, offs, usrs, comps, stts, analyticsData, yearlyRevData, fetchedAgents,
         fetchedRevenueData, fetchedVolumeData
       ] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/packages`).then(r => r.json()),
-        fetch(`${API_BASE_URL}/api/admin/bookings`).then(r => r.json()),
-        fetch(`${API_BASE_URL}/api/offers`).then(r => r.json()),
-        fetch(`${API_BASE_URL}/api/admin/users`).then(r => r.json()),
-        fetch(`${API_BASE_URL}/api/admin/complaints`).then(r => r.json()),
-        fetch(`${API_BASE_URL}/api/admin/stats`).then(r => r.json()),
-        fetch(`${API_BASE_URL}/api/admin/advanced-analytics`).then(r => r.json()),
+        fetch(`${API_BASE_URL}/api/packages`).then(r => r.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/api/admin/bookings`).then(r => r.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/api/offers`).then(r => r.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/api/admin/users`).then(r => r.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/api/admin/complaints`).then(r => r.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/api/admin/stats`).then(r => r.json()).catch(() => ({
+          users: 0, bookings: 0, bookingsTrend: 0, revenue: 0, revenueTrend: 0,
+          cancellationRate: 0, averageBookingValue: 0, pendingTickets: 0, capacityAlerts: []
+        })),
+        fetch(`${API_BASE_URL}/api/admin/advanced-analytics?range=${currentRange}`).then(r => r.json()).catch(() => ({
+          statusBreakdown: [], topRevenuePackages: [], tripType: []
+        })),
         fetch(`${API_BASE_URL}/api/admin/yearly-revenue`).then(r => r.json()).catch(() => []),
         fetch(`${API_BASE_URL}/api/agents`).then(r => r.json()).catch(() => []),
-        fetch(`${API_BASE_URL}/api/analytics/revenue`).then(r => r.json()).catch(() => []),
-        fetch(`${API_BASE_URL}/api/analytics/volume`).then(r => r.json()).catch(() => [])
+        fetch(`${API_BASE_URL}/api/analytics/revenue?range=${currentRange}`).then(r => r.json()).catch(() => []),
+        fetch(`${API_BASE_URL}/api/analytics/volume?range=${currentRange}`).then(r => r.json()).catch(() => [])
       ]);
 
       setPackages(pkgs);
@@ -253,7 +264,10 @@ function AdminContent() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  // ✨ NEW: This automatically re-fetches the data whenever the user changes the dropdown!
+  useEffect(() => { 
+    fetchData(dateRange); 
+  }, [dateRange]);
 
   const handleAssignAgent = async (bookingId: number) => {
     const selectedAgentId = selectedAgents[bookingId];
@@ -290,7 +304,7 @@ function AdminContent() {
     setEditDepartureDates(pkg.departure_dates || []);
     setEditItinerary(pkg.itinerary || []);
     setEditIsInternational(pkg.is_international || false);
-    setEditHotelImages(pkg.hotel_images || []); // Set existing images
+    setEditHotelImages(pkg.hotel_images || []);
     setIsEditModalOpen(true);
   };
 
@@ -342,7 +356,6 @@ function AdminContent() {
     else setDepartureDates(departureDates.filter((d) => d !== dateToRemove));
   };
 
-  // ✅ NEW: Handle Multiple Image Upload for Add Package
   const handleMultipleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -381,7 +394,6 @@ function AdminContent() {
     }
   };
 
-  // ✅ NEW: Handle Multiple Image Upload for Edit Package
   const handleMultipleEditImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -435,7 +447,7 @@ function AdminContent() {
           description: description,
           itinerary: itinerary,
           is_international: isInternational,
-          hotel_images: hotelImages // 🔥 Added hotel_images payload
+          hotel_images: hotelImages
         }),
       });
       if (res.ok) {
@@ -443,7 +455,7 @@ function AdminContent() {
         fetchData();
         setTitle(""); setPrice(""); setImage(""); setDepartureDates([]);
         setDurationDays(""); setDescription(""); setItinerary([]); setIsInternational(false);
-        setHotelImages([]); // Reset gallery
+        setHotelImages([]);
       }
     } catch (err) { toast.error("Failed to add package"); }
   };
@@ -463,7 +475,7 @@ function AdminContent() {
           description: editDescription,
           itinerary: editItinerary,
           is_international: editIsInternational,
-          hotel_images: editHotelImages // 🔥 Added hotel_images payload
+          hotel_images: editHotelImages
         }),
       });
       if (res.ok) {
@@ -616,7 +628,7 @@ function AdminContent() {
 
   const downloadCSV = () => {
     if (bookings.length === 0) return toast.error("No bookings to export.");
-    const headers = ["Booking ID", "Package Name", "Customer Name", "Travel Date", "Total People", "Total Paid (INR)", "Status", "Payment ID"];
+    const headers = ["Booking ID", "Package Name", "Customer Name", "Travel Date", "Total People", "Total Paid (INR)", "Status", "Payment ID", "Refund Status", "Refund Amount (INR)"];
     const rows = bookings.map(b => [
       b.id,
       `"${b.title}"`,
@@ -625,7 +637,9 @@ function AdminContent() {
       b.people,
       b.total_price,
       b.status.toUpperCase(),
-      b.payment_id || "N/A"
+      b.payment_id || "N/A",
+      b.refund_status || "Not Applicable",
+      b.refund_amount || 0
     ]);
     const csvContent = [headers.join(","), ...rows.map(row => row.join(","))].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -638,6 +652,20 @@ function AdminContent() {
     document.body.removeChild(link);
     toast.success("Report Downloaded! 📊");
   };
+
+  // --- Filter Logic ---
+  const filteredBookings = bookings.filter((b) => {
+    // 1. Search Match (Checks username, package title, or payment ID)
+    const matchesSearch = 
+      b.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (b.payment_id && b.payment_id.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    // 2. Status Match
+    const matchesStatus = statusFilter === "All" || b.status.toLowerCase() === statusFilter.toLowerCase();
+
+    return matchesSearch && matchesStatus;
+  });
 
   if (loading) return <p className="loading-text">Loading Dashboard...</p>;
 
@@ -714,7 +742,7 @@ function AdminContent() {
               
               <div style={{ display: "flex", flexWrap: "wrap", gap: "15px" }}>
                 {stats.capacityAlerts.map((alert: any, idx: number) => (
-                  <div key={idx} style={{ background: "white", padding: "12px 16px", borderRadius: "8px", border: "1px solid #fca5a5", flex: "1 1 300px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div key={`alert-${idx}`} style={{ background: "white", padding: "12px 16px", borderRadius: "8px", border: "1px solid #fca5a5", flex: "1 1 300px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
                       <p style={{ margin: "0 0 4px 0", fontWeight: "bold", color: "#1e293b", fontSize: "14px" }}>{alert.title}</p>
                       <p style={{ margin: 0, color: "#64748b", fontSize: "12px" }}>Departure: {safeFormatDate(alert.date)}</p>
@@ -739,11 +767,39 @@ function AdminContent() {
 
           {/* ROW 1: MONTHLY REVENUE TREND */}
           <div style={{ background: "white", padding: "24px", borderRadius: "16px", border: "1px solid #e2e8f0", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
-            <h3 style={{ marginBottom: "20px", color: "#0f172a", fontSize: "18px", display: "flex", alignItems: "center", gap: "8px" }}>
-              📈 Monthly Revenue Trend
-            </h3>
+            
+            {/* ✨ NEW: Header with Date Range Dropdown */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h3 style={{ margin: 0, color: "#0f172a", fontSize: "18px", display: "flex", alignItems: "center", gap: "8px" }}>
+                📈 Monthly Revenue Trend
+              </h3>
+              <select 
+                value={dateRange} 
+                onChange={(e) => {
+                  setDateRange(e.target.value);
+                  toast.success(`Data scope changed to: ${e.target.options[e.target.selectedIndex].text}`);
+                }}
+                style={{ 
+                  padding: "8px 12px", 
+                  borderRadius: "8px", 
+                  border: "1px solid #e2e8f0", 
+                  background: "#f8fafc", 
+                  cursor: "pointer", 
+                  fontSize: "13px", 
+                  fontWeight: "bold",
+                  color: "#475569",
+                  outline: "none"
+                }}
+              >
+                <option value="30_days">Last 30 Days</option>
+                <option value="6_months">Last 6 Months</option>
+                <option value="1_year">Last 1 Year</option>
+                <option value="all_time">All Time</option>
+              </select>
+            </div>
+
             <ResponsiveContainer width="100%" height={320}>
-              <AreaChart data={revenueData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <AreaChart key={dateRange} data={revenueData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#2563eb" stopOpacity={0.4}/>
@@ -794,8 +850,8 @@ function AdminContent() {
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={analytics.topRevenuePackages} layout="vertical" margin={{ left: 110, right: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                  <XAxis type="number" tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`} stroke="#64748b" tick={{fontSize: 12}} axisLine={false} tickLine={false} />
-                  <YAxis dataKey="name" type="category" width={130} tick={{fontSize: 11, fill: '#334155', fontWeight: 500}} axisLine={false} tickLine={false} />
+                  <XAxis type={"number" as any} tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`} stroke="#64748b" tick={{fontSize: 12}} axisLine={false} tickLine={false} />
+                  <YAxis dataKey="name" type={"category" as any} width={130} tick={{fontSize: 11, fill: '#334155', fontWeight: 500}} axisLine={false} tickLine={false} />
                   <Tooltip formatter={(value: any) => `₹${Number(value).toLocaleString()}`} cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }} />
                   <Bar dataKey="revenue" fill="#10b981" radius={[0, 6, 6, 0]} barSize={24} />
                 </BarChart>
@@ -812,7 +868,7 @@ function AdminContent() {
                 <PieChart>
                   <Pie data={analytics.statusBreakdown} innerRadius={60} outerRadius={85} paddingAngle={6} dataKey="value" stroke="none">
                     {analytics.statusBreakdown.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={STATUS_COLORS[entry.name.toLowerCase()] || '#cbd5e1'} />
+                      <Cell key={`cell-status-${index}`} fill={STATUS_COLORS[entry.name.toLowerCase()] || '#cbd5e1'} />
                     ))}
                   </Pie>
                   <Tooltip contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }} />
@@ -827,7 +883,7 @@ function AdminContent() {
                 <PieChart>
                   <Pie data={analytics.tripType} innerRadius={60} outerRadius={85} paddingAngle={6} dataKey="value" stroke="none">
                     {analytics.tripType.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.name === 'International' ? '#8b5cf6' : '#f43f5e'} />
+                      <Cell key={`cell-trip-${index}`} fill={entry.name === 'International' ? '#8b5cf6' : '#f43f5e'} />
                     ))}
                   </Pie>
                   <Tooltip contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }} />
@@ -872,7 +928,7 @@ function AdminContent() {
             <div style={{ marginTop: "20px", padding: "15px", background: "#f1f5f9", borderRadius: "12px" }}>
               <h4 style={{ marginBottom: "10px" }}>Day-wise Itinerary</h4>
               {itinerary.map((dayText, index) => (
-                <div key={index} style={{ marginBottom: "10px", display: "flex", gap: "10px" }}>
+                <div key={`itin-${index}`} style={{ marginBottom: "10px", display: "flex", gap: "10px" }}>
                   <span style={{ fontWeight: "bold", minWidth: "60px" }}>Day {index + 1}:</span>
                   <textarea
                     placeholder={`What happens on Day ${index + 1}?`}
@@ -894,8 +950,8 @@ function AdminContent() {
                 <button type="button" onClick={handleAddDate} style={{ padding: "8px 16px", background: "#3b82f6", color: "white", borderRadius: "6px", border: "none", fontWeight: "bold", cursor: "pointer" }}>+ Add Date</button>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                {departureDates.map(d => (
-                  <span key={d} style={{ background: "#e0e7ff", color: "#4f46e5", padding: "6px 12px", borderRadius: "16px", fontSize: "13px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "8px" }}>
+                {departureDates.map((d, index) => (
+                  <span key={`dd-${d}-${index}`} style={{ background: "#e0e7ff", color: "#4f46e5", padding: "6px 12px", borderRadius: "16px", fontSize: "13px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "8px" }}>
                     {safeFormatDate(d)}
                     <span onClick={() => handleRemoveDate(d, false)} style={{ cursor: "pointer", color: "#ef4444" }}>×</span>
                   </span>
@@ -931,7 +987,7 @@ function AdminContent() {
               {hotelImages.length > 0 && (
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>
                   {hotelImages.map((url, index) => (
-                    <div key={index} style={{ position: "relative" }}>
+                    <div key={`hi-${index}`} style={{ position: "relative" }}>
                       <img 
                         src={url.startsWith('/') ? `${API_BASE_URL}${url}` : url} 
                         alt={`Upload preview ${index + 1}`} 
@@ -947,8 +1003,8 @@ function AdminContent() {
           </div>
 
           <div className="dashboard-grid">
-            {packages.map((p) => (
-              <div key={p.id} className="dashboard-card" onClick={() => openDetails(p)}>
+            {packages.map((p, index) => (
+              <div key={`pkg-${p.id}-${index}`} className="dashboard-card" onClick={() => openDetails(p)}>
                 <img src={p.image} alt={p.title} />
                 <div className="card-content">
                   <h3>{p.title} {p.is_international && "🛂"}</h3>
@@ -996,7 +1052,7 @@ function AdminContent() {
             <div style={{ marginTop: "20px", padding: "15px", background: "#f1f5f9", borderRadius: "12px", marginBottom: "15px" }}>
               <h4 style={{ marginBottom: "10px" }}>Day-wise Itinerary</h4>
               {editItinerary.map((dayText, index) => (
-                <div key={index} style={{ marginBottom: "10px", display: "flex", gap: "10px" }}>
+                <div key={`editin-${index}`} style={{ marginBottom: "10px", display: "flex", gap: "10px" }}>
                   <span style={{ fontWeight: "bold", minWidth: "60px" }}>Day {index + 1}:</span>
                   <textarea
                     placeholder={`What happens on Day ${index + 1}?`}
@@ -1018,8 +1074,8 @@ function AdminContent() {
                 <button type="button" onClick={handleAddEditDate} style={{ padding: "8px 16px", background: "#3b82f6", color: "white", borderRadius: "6px", border: "none", fontWeight: "bold", cursor: "pointer" }}>+ Add Date</button>
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                {editDepartureDates.map(d => (
-                  <span key={d} style={{ background: "#e0e7ff", color: "#4f46e5", padding: "6px 12px", borderRadius: "16px", fontSize: "13px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "8px" }}>
+                {editDepartureDates.map((d, index) => (
+                  <span key={`edd-${d}-${index}`} style={{ background: "#e0e7ff", color: "#4f46e5", padding: "6px 12px", borderRadius: "16px", fontSize: "13px", fontWeight: "bold", display: "flex", alignItems: "center", gap: "8px" }}>
                     {safeFormatDate(d)}
                     <span onClick={() => handleRemoveDate(d, true)} style={{ cursor: "pointer", color: "#ef4444" }}>×</span>
                   </span>
@@ -1055,7 +1111,7 @@ function AdminContent() {
               {editHotelImages.length > 0 && (
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>
                   {editHotelImages.map((url, index) => (
-                    <div key={index} style={{ position: "relative" }}>
+                    <div key={`ehi-${index}`} style={{ position: "relative" }}>
                       <img 
                         src={url.startsWith('/') ? `${API_BASE_URL}${url}` : url} 
                         alt={`Upload preview ${index + 1}`} 
@@ -1148,11 +1204,29 @@ function AdminContent() {
       {/* User Trip History Modal */}
       {isHistoryModalOpen && (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 }} onClick={() => setIsHistoryModalOpen(false)}>
-          <div className="modal-box" style={{ background: 'white', padding: '30px', borderRadius: '16px', width: '600px', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <h3 style={{ margin: 0, fontSize: "22px" }}>Trip History: <span style={{ color: "#3b82f6" }}>{selectedHistoryUser}</span></h3>
-              <button onClick={() => setIsHistoryModalOpen(false)} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>✕</button>
+          <div className="modal-box" style={{ background: 'white', padding: '30px', borderRadius: '16px', width: '650px', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }} onClick={(e) => e.stopPropagation()}>
+            
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
+              <div>
+                <h3 style={{ margin: "0 0 8px 0", fontSize: "22px", color: "#0f172a" }}>
+                  Customer Profile: <span style={{ color: "#2563eb" }}>{selectedHistoryUser}</span>
+                </h3>
+                
+                {/* ✨ NEW: Customer Lifetime Value (LTV) Stats */}
+                <div style={{ display: "flex", gap: "15px", fontSize: "13px" }}>
+                  <span style={{ background: "#f1f5f9", padding: "6px 12px", borderRadius: "6px", color: "#475569", fontWeight: "bold" }}>
+                    Total Trips: {userHistoryDetails.length}
+                  </span>
+                  <span style={{ background: "#dcfce3", padding: "6px 12px", borderRadius: "6px", color: "#166534", fontWeight: "bold" }}>
+                    Lifetime Spent: ₹{userHistoryDetails.filter(t => t.status === 'confirmed').reduce((sum, trip) => sum + Number(trip.total_price), 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              <button onClick={() => setIsHistoryModalOpen(false)} style={{ background: "#f1f5f9", border: "none", width: "32px", height: "32px", borderRadius: "50%", fontSize: "16px", cursor: "pointer", color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
+
+            <hr style={{ border: "none", borderTop: "1px solid #e2e8f0", marginBottom: "20px" }} />
 
             {userHistoryDetails.length === 0 ? (
               <div style={{ padding: "40px", textAlign: "center", background: "#f8fafc", borderRadius: "12px", color: "#64748b" }}>
@@ -1160,17 +1234,39 @@ function AdminContent() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-                {userHistoryDetails.map(trip => (
-                  <div key={trip.id} style={{ display: "flex", gap: "15px", padding: "15px", border: "1px solid #e2e8f0", borderRadius: "12px", alignItems: "center" }}>
-                    <img src={trip.image} alt={trip.title} style={{ width: "80px", height: "60px", borderRadius: "8px", objectFit: "cover", filter: trip.status === "cancelled" ? "grayscale(100%)" : "none" }} />
+                {userHistoryDetails.map((trip, index) => (
+                  <div key={`history-${trip.id}-${index}`} style={{ display: "flex", gap: "15px", padding: "15px", border: "1px solid #e2e8f0", borderRadius: "12px", alignItems: "center", background: trip.status === "cancelled" ? "#fef2f2" : "white" }}>
+                    <img src={trip.image} alt={trip.title} style={{ width: "90px", height: "70px", borderRadius: "8px", objectFit: "cover", filter: trip.status === "cancelled" ? "grayscale(100%) opacity(70%)" : "none" }} />
+                    
                     <div style={{ flex: 1 }}>
-                      <h4 style={{ margin: "0 0 5px 0", fontSize: "16px", color: "#0f172a" }}>{trip.title}</h4>
-                      <p style={{ margin: 0, fontSize: "13px", color: "#64748b" }}>Travel Date: {safeFormatDate(trip.travel_date)}</p>
-                      <p style={{ margin: "5px 0 0 0", fontSize: "14px", fontWeight: "bold", color: "#16a34a" }}>Paid: ₹{trip.total_price}</p>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>
+                        <h4 style={{ margin: 0, fontSize: "16px", color: "#0f172a" }}>{trip.title}</h4>
+                        <span style={{ fontSize: "12px", color: "#94a3b8", fontWeight: "bold" }}>ID: #{trip.id}</span>
+                      </div>
+                      
+                      <p style={{ margin: "0 0 6px 0", fontSize: "13px", color: "#64748b" }}>
+                        📅 Date: <strong style={{ color: "#334155" }}>{safeFormatDate(trip.travel_date)}</strong> &nbsp;|&nbsp; 👥 People: <strong>{trip.people}</strong>
+                      </p>
+                      
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontSize: "14px", fontWeight: "bold", color: trip.status === "cancelled" ? "#64748b" : "#16a34a", textDecoration: trip.status === "cancelled" ? "line-through" : "none" }}>
+                          ₹{Number(trip.total_price).toLocaleString()}
+                        </span>
+                        
+                        {/* ✨ NEW: Inline Refund Info if Cancelled */}
+                        {trip.status === "cancelled" && Number(trip.refund_amount) > 0 && (
+                          <span style={{ fontSize: "12px", color: "#b45309", background: "#fef3c7", padding: "2px 8px", borderRadius: "4px", fontWeight: "bold" }}>
+                            Refunded: ₹{Number(trip.refund_amount).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span style={{ padding: "6px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "bold", background: trip.status === 'confirmed' ? "#dcfce3" : "#fee2e2", color: trip.status === 'confirmed' ? "#166534" : "#991b1b" }}>
-                      {trip.status.toUpperCase()}
-                    </span>
+
+                    <div style={{ textAlign: "right" }}>
+                      <span style={{ display: "inline-block", padding: "6px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "bold", background: trip.status === 'confirmed' ? "#dcfce3" : "#fee2e2", color: trip.status === 'confirmed' ? "#166534" : "#991b1b", textTransform: "capitalize" }}>
+                        {trip.status}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1179,12 +1275,36 @@ function AdminContent() {
         </div>
       )}
 
-      {/* ✅ UPDATED: Bookings Tab with Agent Assignment */}
+      {/* ✅ UPDATED: Bookings Tab with Search & Filter */}
       {activeTab === "bookings" && (
         <div className="chart-box">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
             <h3 style={{ margin: 0 }}>Customer Bookings</h3>
-            <button onClick={downloadCSV} style={{ padding: '10px 20px', background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>📊 Export CSV Report</button>
+            
+            {/* ✨ NEW: Search and Filter Controls */}
+            <div style={{ display: 'flex', gap: '10px', flex: 1, maxWidth: '500px' }}>
+              <input 
+                type="text" 
+                placeholder="Search user, package, or payment ID..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ flex: 1, padding: '10px 15px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
+              />
+              <select 
+                value={statusFilter} 
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', background: 'white', cursor: 'pointer', outline: 'none' }}
+              >
+                <option value="All">All Statuses</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <button onClick={downloadCSV} style={{ padding: '10px 20px', background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              📊 Export CSV
+            </button>
           </div>
 
           <table className="admin-table">
@@ -1193,79 +1313,104 @@ function AdminContent() {
                 <th style={{ padding: "15px" }}>Package</th>
                 <th style={{ padding: "15px" }}>User</th>
                 <th style={{ padding: "15px" }}>Date</th>
-                <th style={{ padding: "15px" }}>ID Proof</th>
-                <th style={{ padding: "15px" }}>Amount</th>
+                <th style={{ padding: "15px" }}>Amount Paid</th>
+                <th style={{ padding: "15px" }}>Refund Info</th>
                 <th style={{ padding: "15px" }}>Status</th>
                 <th style={{ padding: "15px" }}>Assign Agent</th>
                 <th style={{ padding: "15px" }}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {bookings.map((b) => {
-                const proofUrl = b.id_proof_url || (b as any).id_proof;
-                return (
-                  <tr key={b.id} className="admin-table-row">
-                    <td><strong>{b.title}</strong></td>
-                    <td>{b.username}</td>
-                    <td style={{ padding: "15px", color: "#475569" }}>{safeFormatDate(b.travel_date)}</td>
-                    <td style={{ padding: "15px" }}>
-                      {proofUrl ? (
-                        <a
-                          href={`${API_BASE_URL}${proofUrl}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ color: "#2563eb", fontWeight: "bold", textDecoration: "underline", fontSize: "13px" }}
-                        >
-                          View Doc 📄
-                        </a>
-                      ) : (
-                        <span style={{ color: "#94a3b8", fontSize: "12px" }}>No Doc</span>
-                      )}
-                    </td>
-                    <td style={{ padding: "15px", color: "#16a34a", fontWeight: "bold" }}>₹{Number(b.total_price).toLocaleString()}</td>
-                    <td>{b.status === "confirmed" ? "✅" : "❌"}</td>
-                    
-                    {/* ✅ Agent Assignment Column */}
-                    <td style={{ padding: "10px" }}>
-                      {b.status === "confirmed" ? (
-                        <div style={{ display: "flex", gap: "8px", flexDirection: "column" }}>
-                          <select 
-                            value={selectedAgents[b.id] || ""}
-                            onChange={(e) => setSelectedAgents({ ...selectedAgents, [b.id]: e.target.value })}
-                            style={{ padding: "6px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "12px" }}
-                          >
-                            <option value="" disabled>Select Agent...</option>
-                            {agents.map((agent) => (
-                              <option key={agent.agent_id} value={agent.agent_id}>
-                                {agent.agent_name} ({agent.role})
-                              </option>
-                            ))}
-                          </select>
-                          <button 
-                            onClick={() => handleAssignAgent(b.id)}
-                            style={{ padding: "6px", background: "#3b82f6", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}
-                          >
-                            Assign Agent
-                          </button>
-                        </div>
-                      ) : (
-                        <span style={{ color: "#94a3b8", fontSize: "12px" }}>N/A</span>
-                      )}
-                    </td>
+              {/* ✨ NEW: Notice we are mapping over filteredBookings now, not bookings */}
+              {filteredBookings.length > 0 ? (
+                filteredBookings.map((b, index) => {
+                  return (
+                    <tr key={`booking-${b.id}-${index}`} className="admin-table-row">
+                      <td><strong>{b.title}</strong></td>
+                      <td>{b.username}</td>
+                      <td style={{ padding: "15px", color: "#475569" }}>{safeFormatDate(b.travel_date)}</td>
+                      
+                      <td style={{ padding: "15px", color: "#16a34a", fontWeight: "bold" }}>₹{Number(b.total_price).toLocaleString()}</td>
+                      
+                      <td style={{ padding: "15px" }}>
+                        {b.status === "cancelled" ? (
+                          <div>
+                            <span style={{ display: "block", color: b.refund_status === "Processed" ? "#16a34a" : "#b45309", fontWeight: "bold", fontSize: "13px" }}>
+                              {b.refund_status || "Pending"}
+                            </span>
+                            {Number(b.refund_amount) > 0 && (
+                              <span style={{ fontSize: "12px", color: "#64748b" }}>
+                                ₹{Number(b.refund_amount).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ color: "#94a3b8", fontSize: "12px" }}>N/A</span>
+                        )}
+                      </td>
 
-                    <td>
-                      {b.status !== "cancelled" && (
-                        <button
-                          onClick={() => cancelBooking(b)}
-                          style={{ padding: "6px 12px", background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}
-                        >
-                          Cancel
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
+                      {/* ✨ NEW: Professional Status Badges instead of simple Emojis */}
+                      <td>
+                        <span style={{ 
+                          padding: "6px 12px", 
+                          borderRadius: "20px", 
+                          fontSize: "12px", 
+                          fontWeight: "bold", 
+                          background: b.status === 'confirmed' ? "#dcfce3" : "#fee2e2", 
+                          color: b.status === 'confirmed' ? "#166534" : "#991b1b",
+                          textTransform: "capitalize"
+                        }}>
+                          {b.status}
+                        </span>
+                      </td>
+                      
+                      <td style={{ padding: "10px" }}>
+                        {b.status === "confirmed" ? (
+                          <div style={{ display: "flex", gap: "8px", flexDirection: "column" }}>
+                            <select 
+                              value={selectedAgents[b.id] || ""}
+                              onChange={(e) => setSelectedAgents({ ...selectedAgents, [b.id]: e.target.value })}
+                              style={{ padding: "6px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "12px" }}
+                            >
+                              <option value="" disabled>Select Agent...</option>
+                              {agents.map((agent) => (
+                                <option key={agent.agent_id} value={agent.agent_id}>
+                                  {agent.agent_name} ({agent.role})
+                                </option>
+                              ))}
+                            </select>
+                            <button 
+                              onClick={() => handleAssignAgent(b.id)}
+                              style={{ padding: "6px", background: "#3b82f6", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}
+                            >
+                              Assign Agent
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ color: "#94a3b8", fontSize: "12px" }}>N/A</span>
+                        )}
+                      </td>
+
+                      <td>
+                        {b.status !== "cancelled" && (
+                          <button
+                            onClick={() => cancelBooking(b)}
+                            style={{ padding: "6px 12px", background: "#fee2e2", color: "#991b1b", border: "none", borderRadius: "6px", cursor: "pointer", fontWeight: "bold" }}
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan={8} style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
+                    No bookings match your search criteria.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -1277,8 +1422,8 @@ function AdminContent() {
           <table className="admin-table">
             <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Age</th><th>Contact</th><th>City</th><th>Action</th></tr></thead>
             <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className="admin-table-row">
+              {users.map((u, index) => (
+                <tr key={`user-${u.id}-${index}`} className="admin-table-row">
                   <td>#{u.id}</td>
                   <td><strong>{u.username}</strong></td>
                   <td>{u.email}</td>
@@ -1304,8 +1449,8 @@ function AdminContent() {
           <table className="admin-table">
             <thead><tr><th style={{ width: "80px" }}>Ticket ID</th><th style={{ width: "150px" }}>User</th><th>Message</th><th style={{ width: "120px" }}>Date</th><th style={{ width: "100px" }}>Status</th><th style={{ width: "120px" }}>Action</th></tr></thead>
             <tbody>
-              {complaints.map((c) => (
-                <tr key={c.id} className="admin-table-row" style={{ opacity: c.status === "resolved" ? 0.6 : 1 }}>
+              {complaints.map((c, index) => (
+                <tr key={`complaint-${c.id}-${index}`} className="admin-table-row" style={{ opacity: c.status === "resolved" ? 0.6 : 1 }}>
                   <td><strong>#{c.id}</strong></td>
                   <td><strong>{c.username}</strong><br /><span style={{ fontSize: "12px", color: "#64748b" }}>{c.email}</span></td>
                   <td>{c.message}</td>
@@ -1347,8 +1492,8 @@ function AdminContent() {
           <table className="admin-table">
             <thead><tr><th>Offer Name</th><th>Package</th><th>Discount</th><th>Starts</th><th>Ends</th><th>Action</th></tr></thead>
             <tbody>
-              {offers.map((o) => (
-                <tr key={o.id} className="admin-table-row">
+              {offers.map((o, index) => (
+                <tr key={`offer-${o.id}-${index}`} className="admin-table-row">
                   <td><strong>{o.name}</strong></td>
                   <td>{o.package_title}</td>
                   <td style={{ color: "#16a34a", fontWeight: "bold" }}>{o.discount_percentage}% OFF</td>

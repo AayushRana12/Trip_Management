@@ -92,6 +92,7 @@ export default function BookingPage() {
 
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
+  const [rooms, setRooms] = useState(1);
   const [price, setPrice] = useState(0);
 
   const [mealPreference, setMealPreference] = useState("Veg");
@@ -100,6 +101,9 @@ export default function BookingPage() {
   const [transferOption, setTransferOption] = useState("none");
   const [arrivalPoint, setArrivalPoint] = useState("");
   const [arrivalTime, setArrivalTime] = useState("");
+  
+  // ✨ NEW: State for distance slab pricing
+  const [distanceSlab, setDistanceSlab] = useState<number>(200); 
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
@@ -173,11 +177,30 @@ export default function BookingPage() {
   }, [date, availability]);
 
   const totalPeople = adults + children;
+  
+  // Automatically calculate minimum rooms needed
+  useEffect(() => {
+    const minRoomsNeeded = Math.ceil(totalPeople / 3);
+    if (rooms < minRoomsNeeded) {
+      setRooms(minRoomsNeeded);
+    }
+  }, [totalPeople]);
+
+  // ✨ NEW: Advanced Pricing Logic
   const adultsCost = price * adults;
   const childrenCost = Math.round((price * 0.7) * children);
   const baseCost = adultsCost + childrenCost;
-  const vehicleCost = selectedVehicle ? selectedVehicle.price_per_day : 0;
-  const totalPrice = baseCost + vehicleCost;
+  
+  let totalTransferCost = 0;
+  if (transferOption === "arrival") {
+    // One way: Slab rate * Total People
+    totalTransferCost = distanceSlab * totalPeople;
+  } else if (transferOption === "round_trip") {
+    // Round trip: Slab rate * 1.8 * Total People
+    totalTransferCost = Math.round((distanceSlab * 1.8) * totalPeople);
+  }
+
+  const totalPrice = baseCost + totalTransferCost;
 
   const handleProceed = () => {
     if (transferOption !== "none" && (!arrivalPoint || !arrivalTime)) {
@@ -187,6 +210,17 @@ export default function BookingPage() {
 
     if (!date || totalPeople === 0) {
       toast.error("Please select a travel date and at least 1 person.");
+      return;
+    }
+
+    const maxCapacityAllowed = rooms * 3;
+    if (totalPeople > maxCapacityAllowed) {
+      toast.error(`Hotel Policy: ${rooms} room(s) can accommodate a maximum of ${maxCapacityAllowed} guests. Please add more rooms.`);
+      return;
+    }
+
+    if (rooms > totalPeople) {
+      toast.error("You cannot book more rooms than the total number of travelers.");
       return;
     }
 
@@ -235,7 +269,7 @@ export default function BookingPage() {
       }
 
       const options = {
-        key: "rzp_test_SfKwgt4lOI7Vte",
+        key: "rzp_test_SfKwgt4lOI7Vte", // Replace with your environment variable in production
         amount: orderData.order.amount,
         currency: "INR",
         name: "Trip Management",
@@ -256,10 +290,12 @@ export default function BookingPage() {
               people: totalPeople,
               adults: adults,
               children: children,
+              rooms: rooms, 
               meal_preference: mealPreference,
               transfer_option: transferOption,
               arrival_point: arrivalPoint,
               arrival_time: arrivalTime,
+              transfer_cost: totalTransferCost // Passed to backend
             }),
           });
 
@@ -357,10 +393,16 @@ export default function BookingPage() {
                 </div>
               )}
 
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px", color: "#64748b", fontSize: "15px", fontWeight: "500" }}>
+                <span>🏨 Rooms Booked</span>
+                <strong>{rooms} Room(s)</strong>
+              </div>
+
+              {/* ✨ NEW: Transfer Receipt Line Item */}
               {transferOption !== "none" && (
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px", color: "#0ea5e9", fontWeight: "bold" }}>
-                  <span>🚗 Last-Mile Transfer</span>
-                  <strong>{transferOption === "arrival" ? "Arrival Only" : "Round Trip"}</strong>
+                  <span>🚗 Transfer ({transferOption === "arrival" ? "One-Way" : "Round-Trip"})</span>
+                  <strong>+ ₹{totalTransferCost.toLocaleString()}</strong>
                 </div>
               )}
 
@@ -380,7 +422,7 @@ export default function BookingPage() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
 
-              {/* CALENDAR DEPARTURE DATE - 2 MONTH POPOVER */}
+              {/* CALENDAR DEPARTURE DATE */}
               <div>
                 <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>
                   Select Departure Date
@@ -427,8 +469,8 @@ export default function BookingPage() {
                 )}
               </div>
 
-              {/* Adults & Children Grid - USING CUSTOM COMPONENT */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+              {/* THREE-COLUMN GRID: ADULTS, CHILDREN, ROOMS */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "15px" }}>
                 <div>
                   <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>Adults</label>
                   <CustomDropdown
@@ -440,7 +482,7 @@ export default function BookingPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>Children (Under 12)</label>
+                  <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>Children</label>
                   <CustomDropdown
                     options={[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => ({ value: num, label: num.toString() }))}
                     value={children}
@@ -448,9 +490,19 @@ export default function BookingPage() {
                     disabled={showPayment}
                   />
                 </div>
+
+                <div>
+                  <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>Rooms</label>
+                  <CustomDropdown
+                    options={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => ({ value: num, label: num.toString() }))}
+                    value={rooms}
+                    onChange={(val) => setRooms(Number(val))}
+                    disabled={showPayment}
+                  />
+                </div>
               </div>
 
-              {/* MEAL PREFERENCE - USING CUSTOM COMPONENT */}
+              {/* MEAL PREFERENCE */}
               <div>
                 <label style={{ display: "block", marginBottom: "10px", fontWeight: "700", color: "#1e293b", fontSize: "15px" }}>
                   Meal Preference
@@ -504,14 +556,31 @@ export default function BookingPage() {
                 {transferOption !== "none" && (
                   <div className="transfer-details-container" style={{ marginTop: "20px", padding: "20px", background: "#f1f5f9", borderRadius: "12px" }}>
                     <p className="transfer-reminder" style={{ fontSize: "14px", color: "#475569", marginBottom: "15px" }}>
-                      📅 Transport will be automatically scheduled based on your trip dates.
+                      📅 Transport will be automatically scheduled based on your trip dates and selected distance.
                     </p>
+
+                    {/* ✨ NEW: Distance Slab Dropdown */}
+                    <div className="input-group" style={{ marginBottom: "15px" }}>
+                      <label style={{ display: "block", fontSize: "14px", fontWeight: "bold", marginBottom: "8px" }}>Approx. Distance from Arrival to Hotel *</label>
+                      <CustomDropdown
+                        options={[
+                          { value: 200, label: "Up to 20 km (₹200/person)" },
+                          { value: 450, label: "21 km – 50 km (₹450/person)" },
+                          { value: 800, label: "51 km – 100 km (₹800/person)" },
+                          { value: 1200, label: "101 km – 200 km (₹1,200/person)" },
+                          { value: 2000, label: "Above 200 km (₹2,000/person)" },
+                        ]}
+                        value={distanceSlab}
+                        onChange={(val) => setDistanceSlab(Number(val))}
+                        disabled={showPayment}
+                      />
+                    </div>
 
                     <div className="input-group" style={{ marginBottom: "15px" }}>
                       <label style={{ display: "block", fontSize: "14px", fontWeight: "bold", marginBottom: "8px" }}>Arrival Point (Airport or Train Station) *</label>
                       <input
                         type="text"
-                        placeholder="e.g., Airport Name  or Railway Station Name"
+                        placeholder="e.g., Airport Name or Railway Station Name"
                         value={arrivalPoint}
                         onChange={(e) => setArrivalPoint(e.target.value)}
                         required
